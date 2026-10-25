@@ -7,13 +7,25 @@ export function HistorySearch({ bridge, close, background }: { bridge: NativeBri
   const [query, setQuery] = useState(''), [date, setDate] = useState('')
   const [rows, setRows] = useState<Message[]>([]), [more, setMore] = useState(false), [busy, setBusy] = useState(false), [error, setError] = useState('')
   const [searched, setSearched] = useState(false)
-  const revision = useRef(0), input = useRef<HTMLInputElement>(null)
+  const revision = useRef(0), input = useRef<HTMLInputElement>(null), dialog = useRef<HTMLElement>(null), closeRef = useRef(close)
+  closeRef.current = close
   const criteria = useRef({ query: '', until: undefined as string | undefined })
   useEffect(() => {
     const previous = document.activeElement, shell = background.current
     if (shell) shell.inert = true
     input.current?.focus()
-    return () => { revision.current++; if (shell) shell.inert = false; if (previous instanceof HTMLElement && previous.isConnected) previous.focus() }
+    // Disabling the submit button while reading can move focus to <body> in
+    // Chromium. Keep Escape and keyboard containment working in that state.
+    const key = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); closeRef.current(); return }
+      if (event.key !== 'Tab') return
+      const targets = [...(dialog.current?.querySelectorAll<HTMLElement>('button:not(:disabled), input:not(:disabled)') ?? [])]
+      const first = targets[0], last = targets.at(-1), outside = !dialog.current?.contains(document.activeElement)
+      if (event.shiftKey && (outside || document.activeElement === first)) { event.preventDefault(); last?.focus() }
+      else if (!event.shiftKey && (outside || document.activeElement === last)) { event.preventDefault(); first?.focus() }
+    }
+    document.addEventListener('keydown', key, true)
+    return () => { revision.current++; document.removeEventListener('keydown', key, true); if (shell) shell.inert = false; if (previous instanceof HTMLElement && previous.isConnected) previous.focus() }
   }, [background])
   const search = async (older = false) => {
     const current = ++revision.current
@@ -30,15 +42,7 @@ export function HistorySearch({ bridge, close, background }: { bridge: NativeBri
     } catch (failure) { if (revision.current === current) setError(failure instanceof Error ? failure.message : '历史读取失败') }
     finally { if (revision.current === current) setBusy(false) }
   }
-  return <div className="modal-backdrop"><section className="modal history-search" role="dialog" aria-modal="true" aria-label="查找聊天记录" onKeyDown={event => {
-    if (event.key === 'Escape') close()
-    if (event.key === 'Tab') {
-      const targets = [...event.currentTarget.querySelectorAll<HTMLElement>('button:not(:disabled), input:not(:disabled)')]
-      const first = targets[0], last = targets.at(-1)
-      if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus() }
-      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus() }
-    }
-  }}>
+  return <div className="modal-backdrop"><section ref={dialog} className="modal history-search" role="dialog" aria-modal="true" aria-label="查找聊天记录">
     <div className="section-title"><h2>往日的对话</h2><button className="text-button" onClick={close}>关闭</button></div>
     <p className="caption">搜索当前角色的全部聊天，或定位到某一天及之前。</p>
     <form onSubmit={event => { event.preventDefault(); void search() }}>

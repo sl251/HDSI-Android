@@ -11,7 +11,7 @@ try {
     const setup = new URL(location.href).searchParams.has('setup')
     fixture.ready = !setup; fixture.mode = 'continuous'; fixture.statusReads = 0; fixture.testCalls = 0; fixture.failTest = true
     fixture.provider = { id: 'primary', preset: 'custom', label: '测试连接', endpoint: 'https://fixture.test/v1', model: 'test', protocol: 'chat-completions', enabled: true, credentialPresent: true, useForMain: true, useForCompaction: true, useForAlter: true }
-    fixture.messages = setup ? [] : Array.from({ length: 255 }, (_, index) => ({ id: `record-${String(index).padStart(4, '0')}`, direction: index % 2 ? 'character' : 'user', status: index % 2 ? 'delivered' : 'accepted', content: index === 7 ? 'Needle.* 一段旧回忆' : `聊天记录 ${index}`, occurredAt: new Date(1700000000000 + index * 1000).toISOString() }))
+    fixture.messages = setup ? [] : Array.from({ length: 250 }, (_, index) => ({ id: `record-${String(index).padStart(4, '0')}`, direction: index % 2 ? 'character' : 'user', status: index % 2 ? 'delivered' : 'accepted', content: index === 7 ? 'Needle.* 一段旧回忆' : `聊天记录 ${index}`, occurredAt: new Date(1700000000000 + index * 1000).toISOString() }))
     Capacitor.nativePromise = async (plugin, method, options) => {
       if (method === 'settings') return { ...(await original(plugin, method, options)), providers: [fixture.provider] }
       if (method === 'status') { fixture.statusReads++; return { ...(await original(plugin, method, options)), state: fixture.ready ? 'healthy' : 'stopped', running: fixture.ready } }
@@ -43,11 +43,17 @@ try {
   await page.waitForFunction(() => document.querySelectorAll('.message[data-read-anchor]').length === 50)
   const older = page.getByRole('button', { name: '加载更早消息', exact: true })
   await older.scrollIntoViewIfNeeded()
-  const anchor = page.locator('[data-read-anchor="message-record-0205"]')
+  const anchor = page.locator('[data-read-anchor="message-record-0200"]')
   const before = await anchor.evaluate(element => element.getBoundingClientRect().top)
   await older.click(); await page.waitForFunction(() => document.querySelectorAll('.message[data-read-anchor]').length === 100)
   assert.ok(Math.abs((await anchor.evaluate(element => element.getBoundingClientRect().top)) - before) < 3, 'prepending keeps the reading anchor')
-  for (const count of [150, 200, 250, 255]) { await older.click(); await page.waitForFunction(value => document.querySelectorAll('.message[data-read-anchor]').length === value, count) }
+  for (const count of [150, 200, 250]) { await older.click(); await page.waitForFunction(value => document.querySelectorAll('.message[data-read-anchor]').length === value, count) }
+  await older.scrollIntoViewIfNeeded()
+  const oldest = page.locator('[data-read-anchor="message-record-0000"]')
+  const endPosition = await oldest.evaluate(element => element.getBoundingClientRect().top)
+  await older.click(); await older.waitFor({ state: 'detached' })
+  const afterEnd = await oldest.evaluate(element => ({ top: element.getBoundingClientRect().top, y: scrollY }))
+  assert.ok(Math.abs(afterEnd.top - endPosition) < 3, `the empty final page also consumes the reading anchor: ${endPosition} -> ${JSON.stringify(afterEnd)}`)
   assert.equal(await older.count(), 0)
   await page.getByRole('button', { name: '查找聊天记录', exact: true }).click()
   const dialog = page.getByRole('dialog', { name: '查找聊天记录' })
@@ -63,6 +69,8 @@ try {
   await dialog.getByLabel('日期').fill('2023-11-13')
   await dialog.getByRole('button', { name: '查找记录', exact: true }).click()
   await dialog.getByText('已找到 0 条', { exact: true }).waitFor()
+  // Chromium/Linux can blur a submit button when it is disabled during a read.
+  await page.evaluate(() => { if (document.activeElement instanceof HTMLElement) document.activeElement.blur() })
   await page.keyboard.press('Escape'); await dialog.waitFor({ state: 'detached' })
   assert.equal(await page.locator('.app').evaluate(element => element.inert), false)
   await page.evaluate(() => { Object.defineProperty(document, 'hidden', { configurable: true, get: () => !!fixture.hidden }); fixture.hidden = true; document.dispatchEvent(new Event('visibilitychange')) })
@@ -105,5 +113,5 @@ try {
   await setup.waitFor({ state: 'detached' })
   assert.equal(await page.evaluate(() => localStorage.getItem('hds.quickstart.v1')), '1')
   assert.deepEqual(f.errors, [])
-  console.log('PASS Preview 9.7: 255 messages, stable reading anchor, literal/date search, 320px layout, hidden polling, power save errors, real-action onboarding and reply completion.')
+  console.log('PASS Preview 9.7: 250 messages including an empty final page, stable reading anchor, literal/date search, 320px layout, hidden polling, power save errors, real-action onboarding and reply completion.')
 } finally { await f.close() }

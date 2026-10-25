@@ -415,7 +415,7 @@ function App() {
     prependAnchor.current = undefined
     const element = [...document.querySelectorAll<HTMLElement>('[data-read-anchor]')].find(row => row.dataset.readAnchor === `message-${anchor.id}`)
     if (element) window.scrollBy({ top: element.getBoundingClientRect().top - anchor.top, behavior: 'instant' })
-  }, [messages])
+  }, [messages, hasOlder])
   useEffect(() => {
     if (!native) { setNotice('浏览器预览模式：原生运行与存储不可用，不显示模拟成功结果。'); return }
     void Promise.all([bridge.settings(), bridge.cards()]).then(([prefs, library]) => { savedSettings.current = JSON.stringify(prefs); setSettings(prefs); setSettingsReady(true); selectedRef.current = prefs.activeCard; setSelected(prefs.activeCard); setCards(library.cards) }).catch(error => setNotice(errorText(error)))

@@ -121,7 +121,7 @@ body { background: radial-gradient(ellipse at 0 0, color-mix(in srgb, var(--acce
 .sticker-manager .sticker-grid > div { background: rgba(var(--surface-rgb),.7); border: 1px solid var(--line); border-radius: 14px; padding: 8px; }
 
 /* Reading the past uses the same restrained surfaces as the story itself. */
-.history-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 0 20px;flex-wrap:wrap}
+.history-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 0 20px;flex-wrap:wrap;min-height:48px}
 .history-search{width:min(620px,calc(100vw - 24px));max-height:88dvh;overflow:auto}
 .history-search form{display:grid;grid-template-columns:minmax(0,1fr) minmax(120px,.6fr);gap:12px;align-items:end}
 .history-search form button{grid-column:1/-1}
