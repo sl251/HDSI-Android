@@ -12,6 +12,10 @@ import { MediaComposer } from './MediaComposer'
 import { outbox } from './outbox'
 import { NotificationBanner } from './NotificationBanner'
 import { WeatherStatus } from './WeatherStatus'
+import { HistorySearch } from './HistorySearch'
+import { QuickStart } from './QuickStart'
+import { PowerSettings } from './PowerSettings'
+import { appendHistory, historyCursor, historyPageSize, recentHistory } from './history-state'
 import { Onboarding, onboardingStorageKey, type OnboardingTarget } from './Onboarding'
 import { RetrievalSettings } from './RetrievalSettings'
 import { ModelCenter, defaultOptions, newProvider } from './ModelCenter'
@@ -88,6 +92,8 @@ const MessageRow = React.memo(function MessageRow({ message, userName, character
 function App() {
   const [page, updatePage] = useState<Page>('chat')
   const [onboardingOpen, setOnboardingOpen] = useState(() => { try { return localStorage.getItem(onboardingStorageKey) === null } catch { return true } })
+  const [quickStartOpen, setQuickStartOpen] = useState(() => { try { return !localStorage.getItem('hds.quickstart.v1') && !localStorage.getItem(onboardingStorageKey) } catch { return true } })
+  const [testedConnection, setTestedConnection] = useState('')
   const appShell = useRef<HTMLDivElement>(null)
   const [onboardingTargets] = useState(() => Object.fromEntries(['welcome', 'library', 'models', 'chat', 'story', 'inbox', 'help'].map(key => [key, React.createRef<HTMLElement>()])) as Record<OnboardingTarget, React.RefObject<HTMLElement>>)
   const guideOrigin = useRef<{ page: Page; space: SpacePage | null }>({ page: 'chat', space: null })
@@ -113,6 +119,8 @@ function App() {
   const lastCharacterReplyTs = replyWatermarks.current.get(selected)
   const [settings, setSettings] = useState<ModelSettings>({ providers: [newProvider()], modelOptions: defaultOptions, userName: '我', userProfile: '', autoAdvance: false })
   const [messages, setMessages] = useState<Message[]>([])
+  const [historySearch, setHistorySearch] = useState(false), [hasOlder, setHasOlder] = useState(false), [loadingOlder, setLoadingOlder] = useState(false)
+  const prependAnchor = useRef<{ id: string; top: number }>()
   const [story, setStory] = useState<{ story?: { status: string; setting?: { character?: { name?: string } }; state?: { alterSystem?: { emotionalOffset?: { description: string; direction: string } | null } } }; schedulingStatus?: SchedulingStatus[]; entries: { id: number; content: string; occurredAt: string; kind: string }[]; facts: Fact[]; memories: { id: number; content: string; summary?: string }[]; intents?: { id: number; summary: string; notBefore?: string; type?: string; payload?: { kind?: string } }[]; overlay?: { state: Record<string, unknown> }; promptTrace: string[] } | null>(null)
   const draftStore = useRef(createDraftStore(localStorage))
   const draftCache = useRef(new Map<string, Draft>())
@@ -288,6 +296,7 @@ function App() {
   useEffect(() => {
     const handleBack = () => {
       if (onboardingOpen) { closeOnboarding(); return true }
+      if (historySearch) { setHistorySearch(false); return true }
       if (stickerManager) { stickerManagerBack.current?.(); return true }
       if (stickerDrawer) { setStickerDrawer(false); return true }
       if (mediaDrawer) { setMediaDrawer(false); return true }
@@ -356,6 +365,8 @@ function App() {
   }
   const refreshCards = async () => { const data = await bridge.cards(); setCards(data.cards); const prefs = await bridge.settings(); selectedRef.current = prefs.activeCard; setSelected(prefs.activeCard) }
   const storyChanged = async (historyReplaced = false) => {
+    messagesRef.current = []
+    setHistorySearch(false); setHasOlder(false); setLoadingOlder(false); prependAnchor.current = undefined
     localStorage.removeItem(`hds-maintenance-${selected}`)
     if (historyReplaced) replyWatermarks.current.clear(selected)
     for (const key of positions.current.keys()) if (key.startsWith(`${selected}:`)) positions.current.delete(key)
@@ -368,8 +379,8 @@ function App() {
   messagesRef.current = messages
   const historyReads = useRef(refreshCoordinator(async () => {
     const cardId = selectedRef.current
-    return { cardId, rows: (await bridge.rpc({ method: 'messages.history' })).data as Message[] }
-  }, ({ cardId, rows: value }, revision) => {
+    return { cardId, ...await recentHistory(messagesRef.current, async before => (await bridge.rpc({ method: 'messages.history', payload: { limit: historyPageSize, expectedCardId: cardId, ...(before ? { before } : {}) } })).data as Message[]) }
+  }, ({ cardId, rows: value, replace, hasOlder: older }, revision) => {
     if (revision !== profileRevision.current || !cardId || cardId !== selectedRef.current) return
     replyWatermarks.current.observe(cardId, value)
     try { outgoing.current.remove(cardId, value.map(row => row.id)); setOutgoingRows(outgoing.current.read(cardId)) } catch { /* Retain the durable queue when storage is temporarily unavailable. */ }
@@ -378,18 +389,39 @@ function App() {
       pending.current = null; setRetryTarget(null); setRequestState('accepted')
       if (!stickersRef.current.messages[stickerMessageKey(cardId, request.requestId)] && getDraft(cardId).content.trim() === request.content && JSON.stringify(getDraft(cardId).attachments.map(image => image.id)) === JSON.stringify(request.images ?? [])) { updateDraft({ content: '', attachments: [], audio: undefined }, cardId) }
     }
-    const previous = messagesRef.current
-    const next = mergeMessages(previous, value)
+    const previous = replace ? [] : messagesRef.current
+    if (!previous.length) setHasOlder(older)
+    const next = appendHistory(previous, value)
     if (previous.length && !nearBottom.current) { const ids = new Set(previous.map(row => row.id)); const count = next.filter(row => !ids.has(row.id)).length; if (count) setNewMessages(current => current + count) }
     messagesRef.current = next; setMessages(next)
   }))
   const refreshHistory = () => historyReads.current(profileRevision.current)
+  const loadOlder = async () => {
+    if (loadingOlder || !messagesRef.current.length) return
+    const revision = profileRevision.current, first = messagesRef.current[0]
+    setLoadingOlder(true)
+    try {
+      const rows = (await scopedBridge.rpc({ method: 'messages.history', payload: { limit: historyPageSize, before: historyCursor(first) } })).data as Message[]
+      if (revision !== profileRevision.current) return
+      const anchor = [...document.querySelectorAll<HTMLElement>('[data-read-anchor]')].find(element => element.dataset.readAnchor === `message-${first.id}`)
+      if (anchor) prependAnchor.current = { id: first.id, top: anchor.getBoundingClientRect().top }
+      forceBottom.current = false; nearBottom.current = false; userMoved.current = true
+      const next = appendHistory(messagesRef.current, rows); messagesRef.current = next; setMessages(next); setHasOlder(rows.length === historyPageSize)
+    } catch (error) { if (revision === profileRevision.current) setNotice(errorText(error)) }
+    finally { if (revision === profileRevision.current) setLoadingOlder(false) }
+  }
+  useLayoutEffect(() => {
+    const anchor = prependAnchor.current; if (!anchor) return
+    prependAnchor.current = undefined
+    const element = [...document.querySelectorAll<HTMLElement>('[data-read-anchor]')].find(row => row.dataset.readAnchor === `message-${anchor.id}`)
+    if (element) window.scrollBy({ top: element.getBoundingClientRect().top - anchor.top, behavior: 'instant' })
+  }, [messages, hasOlder])
   useEffect(() => {
     if (!native) { setNotice('浏览器预览模式：原生运行与存储不可用，不显示模拟成功结果。'); return }
     void Promise.all([bridge.settings(), bridge.cards()]).then(([prefs, library]) => { savedSettings.current = JSON.stringify(prefs); setSettings(prefs); setSettingsReady(true); selectedRef.current = prefs.activeCard; setSelected(prefs.activeCard); setCards(library.cards) }).catch(error => setNotice(errorText(error)))
-    let stopped = false, polling = false
+    let stopped = false, polling = false, lastHistory = 0
     const poll = async () => {
-      if (polling || stopped) return
+      if (polling || stopped || document.hidden) return
       polling = true
       try {
         let status = await bridge.status()
@@ -399,19 +431,23 @@ function App() {
           if (launch.cardId) { await openNotification.current(launch.cardId); status = await bridge.status() }
         }
         setRuntime(status)
-        if (status.state === 'healthy') {
+        if (status.state === 'healthy' && (lastHistory === 0 || !messagesRef.current.length || Date.now() - lastHistory >= 15000)) {
+          lastHistory = Date.now()
           await refreshHistory()
         }
       } catch (error) { if (!stopped) setNotice(errorText(error)) } finally { polling = false }
     }
-    void poll(); const interval = setInterval(() => void poll(), 1000)
-    return () => { stopped = true; clearInterval(interval) }
+    const visible = () => { if (!document.hidden) { lastHistory = 0; void poll() } }
+    const listener = bridge.addListener?.('messageReceived', event => { if (!stopped && !document.hidden && event.cardId === selectedRef.current) void refreshHistory().catch(error => setNotice(errorText(error))) }).catch(() => undefined)
+    document.addEventListener('visibilitychange', visible)
+    void poll(); const interval = setInterval(() => void poll(), 3000)
+    return () => { stopped = true; clearInterval(interval); document.removeEventListener('visibilitychange', visible); void listener?.then(handle => handle?.remove()) }
   }, [native])
   useEffect(() => {
     if (page !== 'story' || runtime?.state !== 'healthy') return
     let cancelled = false, loading = false
     const refresh = async () => {
-      if (loading) return
+      if (loading || document.hidden) return
       loading = true
       try { await storyReads.current(profileRevision.current) }
       catch (error) { if (!cancelled) setNotice(errorText(error)) }
@@ -424,7 +460,7 @@ function App() {
     if (!native || runtime?.state !== 'healthy') { setInboxUnread(0); return }
     let cancelled = false, running = false
     const poll = async () => {
-      if (running) return
+      if (running || document.hidden) return
       running = true
       try {
         const result = await bridge.rpc({ method: 'qq.conversations' })
@@ -432,7 +468,7 @@ function App() {
       } catch { if (!cancelled) setInboxUnread(0) }
       finally { running = false }
     }
-    void poll(); const timer = setInterval(() => void poll(), 2000)
+    void poll(); const timer = setInterval(() => void poll(), 15000)
     return () => { cancelled = true; clearInterval(timer) }
   }, [native, runtime?.state])
   const persistSettings = () => {
@@ -505,6 +541,7 @@ function App() {
     savePosition(); profileRevision.current++; selectedRef.current = ''
     try { await bridge.selectCard({ id }) } catch (error) { selectedRef.current = selected; throw error }
     profileRevision.current++
+    messagesRef.current = []; setHasOlder(false); setLoadingOlder(false); setHistorySearch(false); prependAnchor.current = undefined
     pending.current = null; setRetryTarget(null); setRequestState('idle'); setMessages([]); setStory(null)
     await refreshCards(); setRuntime(await bridge.status()); setSwitcher(false)
     if (resume) { await persistSettings(); focusAfterWake.current = true; launchedSettings.current = JSON.stringify(settingsRef.current); await bridge.syncStickerLibrary({ packs: stickerSyncPacks(stickersRef.current) }); await bridge.start(); setRuntime(await bridge.status()) }
@@ -660,6 +697,19 @@ function App() {
   const healthy = runtime?.state === 'healthy'
   const { failures: messageFailures, typing } = useMessageActivity(bridge, native && healthy && page === 'chat', `${selected}:${profileRevision.current}`, settings.modelOptions.mobileTurnDeadlineMs ?? 240000)
   const modelReady = settings.providers.some(row => row.enabled && row.useForMain && row.endpoint && row.model)
+  const primaryConnection = settings.providers.find(row => row.enabled && row.useForMain && row.endpoint && row.model)
+  // Kept only in component memory; API keys never enter a completion marker.
+  const connectionFingerprint = JSON.stringify(primaryConnection)
+  const closeQuickStart = () => { setQuickStartOpen(false); try { localStorage.setItem('hds.quickstart.v1', '1') } catch { /* Optional preference. */ } }
+  const testQuickStart = () => act(async () => {
+    await persistSettings()
+    const row = settingsRef.current.providers.find(item => item.enabled && item.useForMain && item.endpoint && item.model)
+    if (!row) throw new Error('请先填写聊天模型连接')
+    await bridge.rpc({ method: 'models.test', payload: { ...row } })
+    setTestedConnection(JSON.stringify(row)); setNotice('聊天连接测试通过，可以唤醒故事了。')
+  })
+  const firstConversationComplete = messages.some(row => row.direction === 'user' && row.status === 'accepted') && messages.some(row => row.direction === 'character' && row.status === 'delivered')
+  useEffect(() => { if (quickStartOpen && firstConversationComplete) closeQuickStart() }, [quickStartOpen, firstConversationComplete])
   const runtimeLabel = !native ? '界面预览' : healthy ? '随时在线 · 故事继续' : runtime?.state === 'installing' ? '正在准备核心组件' : runtime?.state === 'starting' ? '正在醒来…' : runtime?.state === 'stopping' ? '正在保存故事…' : runtime?.state === 'failed' ? '唤醒未完成 · 可重试' : '正在休息中'
   const wakePanel = <div className={`wake-panel ${transitioning ? 'waking' : ''}`} role="status"><div><b>{active?.card.name || '故事'} · {runtimeLabel}</b><p>{runtime?.state === 'installing' ? '首次准备约 1 分钟，请稍候…' : runtime?.state === 'starting' ? '正在翻开属于你们的这一页。' : '之前的经历留在这里，下一句话由你开始。'}</p></div>{transitioning ? <progress aria-label={runtimeLabel} /> : <button className="primary wake-button" disabled={!native || busy || !settingsReady} onClick={wake}>{!active ? '选择主角' : !modelReady ? '连接故事模型' : runtime?.state === 'failed' ? '再次唤醒' : '点击唤醒'}<Icon name="arrow" /></button>}{runtime?.state === 'installing' && <button className="text-button" onClick={() => act(() => bridge.cancelInstall())}>取消准备</button>}{runtime?.error && <p className="error">{runtime.error}</p>}</div>
   return <>
@@ -669,11 +719,13 @@ function App() {
     <main className={`accordion page-transition page-${pageMotion.phase}`} style={{ '--page-offset': `${pageMotion.direction * 24}px`, '--page-duration': '150ms' } as React.CSSProperties} key={page} data-page={page} onTouchStart={beginSwipe} onTouchMove={event => { if (event.touches.length !== 1) touchStart.current = null }} onTouchEnd={endSwipe} onTouchCancel={() => { touchStart.current = null }} onBlurCapture={() => { void persistSettings().catch(() => {}) }}>
       {notice && <div className="notice" role="status"><span>{notice}</span><button aria-label="关闭提示" onClick={() => setNotice('')}>×</button></div>}
       {restartNeeded && <div className="restart-banner" role="status"><div><b>新配置已就绪</b><span>重启后生效，剧情与记忆会保留。</span></div><button disabled={busy || sending || transitioning} onClick={restart}>立即重启生效</button></div>}
+      {page === 'chat' && quickStartOpen && !onboardingOpen && !firstConversationComplete && <QuickStart character={active?.card.name} configured={modelReady} tested={testedConnection === connectionFingerprint} running={healthy} busy={!native || busy || sending || transitioning || !settingsReady} select={() => setPage('cards')} configure={() => openSpace('models')} test={() => void testQuickStart()} wake={() => void wake()} compose={() => { toLatest(); composer.current?.focus() }} close={closeQuickStart} />}
       {page === 'inbox' && <Inbox bridge={bridge} healthy={runtime?.state === 'healthy'} native={native} configure={() => openSpace(null)} onRootBack={inboxSource === 'space' ? () => openSpace(null) : undefined} backHandler={inboxBack} onUnread={setInboxUnread} />}
       {(page === 'chat' || page === 'feed') && experience.snapshot.jobs.filter(job => job.kind === 'image' && job.purpose === (page === 'feed' ? 'feed' : 'chat') && (job.status === 'failed' || job.status === 'unknown' || job.error)).slice(-3).map(job => <p className="message-failure-hint" role="status" key={job.id}>生图{job.status === 'unknown' ? '结果待确认' : '失败'}：{job.error}<button onClick={() => setMessageDiagnostic(job.id)}>查看生图诊断</button>{(job.status === 'failed' || job.status === 'ready') && <button disabled={busy || !healthy} onClick={() => void act(async () => { await scopedBridge.rpc({ method: 'media.retry', payload: { id: job.id } }); await experience.refresh() })}>重试</button>}</p>)}
       {page === 'feed' && (experience.settings.feedEnabled ? <Feed avatar={avatar.source} cardId={selected} key={selected} bridge={scopedBridge} snapshot={experience.snapshot} refresh={experience.refresh} healthy={healthy} name={characterName} /> : <div className="quiet-empty">动态已关闭。<button onClick={() => openSpace('chat')}>前往设置</button></div>)}
       {page === 'chat' && <>
         <div className="page-heading"><div><div className="eyebrow">A LIFE IN PROGRESS</div><h1><button className="character-switch" aria-label="切换角色或故事" onClick={() => setSwitcher(true)}>{characterName || '此刻之外'}<span aria-hidden="true">⌄</span></button></h1><p>{active ? '从一句话开始，让故事慢慢发生。' : '一个角色，一段继续发生的日常。'}</p></div><button className="text-button" onClick={() => openSpace('chat')}>聊天设置</button></div>
+        {healthy && <div className="history-toolbar"><button className="text-button" onClick={() => setHistorySearch(true)}>查找聊天记录</button>{hasOlder && <button className="secondary" disabled={loadingOlder} onClick={() => void loadOlder()}>{loadingOlder ? '正在读取…' : '加载更早消息'}</button>}</div>}
         {!displayMessages.length && !experience.snapshot.streams.length && requestState !== 'sending' && !typing ? <div className="empty-chat"><div className="empty-art"><span /><span /><span /><b>未完待续</b></div><h2>{active ? healthy ? '故事正在继续' : '等你轻轻唤醒' : '先认识一个角色'}</h2><p>{active ? '那些一起经历的日常，都值得被记住。' : '导入一张角色卡，或亲手写下一个人。让日常从这里开始。'}</p>{!active && <button className="primary" onClick={() => setSwitcher(true)}>选择故事的主角<Icon name="arrow" /></button>}</div> : <div className="messages">{displayMessages.map((message, index) => <MessageRow avatar={avatar.source} entrance={index >= messages.length - 6 ? Math.max(0, index - Math.max(0, messages.length - 6)) : undefined} sticker={message.direction === 'user' ? stickers.messages[stickerMessageKey(selected, message.id)] : undefined} key={message.id} message={message} failureReason={messageFailures?.get(message.id)} onDiagnosticFocus={focusMessageDiagnostic} userName={settings.userName} characterName={characterName} lastCharacterReplyTs={lastCharacterReplyTs} onRetry={retryMessage} retryDisabled={sending || busy || !healthy || message.direction !== 'user'} />)}{experience.snapshot.streams.filter(row => !messages.some(m => m.id === row.id)).map(row => <article className={`message character-reply stream-reply${avatar.source ? " has-avatar" : ""}`} key={row.id}>{avatar.source && <img className="character-avatar chat-avatar" src={avatar.source} alt={`${characterName}的头像`} />}<div className="message-label">{characterName}</div><div className="bubble">{row.content}<span className={row.status === 'streaming' ? 'stream-caret' : ''} /></div><small>{row.status === 'streaming' ? '正在输入…' : '回复中断 · 可在原消息下重试'}</small></article>)}<TypingBubble requestState={requestState} typing={typing && !experience.snapshot.streams.some(row => row.status === 'streaming')} characterName={characterName} /><div ref={scroll} /></div>}
         {newMessages > 0 && <button className="new-messages" onClick={toLatest}>有 {newMessages} 条新消息 · 回到最新</button>}
         {requestState === 'unknown' && !pendingInHistory && <p role="status">发送结果未知，请保留原内容安全重试。<button disabled={sending || busy || !healthy} onClick={() => void send(retryTarget ?? undefined)}>重试发送</button></p>}
@@ -705,6 +757,7 @@ function App() {
           <button className="settings-entry" onClick={() => setStickerManager(true)}><span>表情包<small>我的表情与角色表情 · 独立素材池</small></span><Icon name="arrow" /></button>
           <button ref={onboardingTargets.help as React.RefObject<HTMLButtonElement>} className="settings-entry" onClick={() => setMessageDiagnostic('')}><span>消息诊断<small>处理过程、未回复与调用失败原因</small></span><Icon name="arrow" /></button>
           <button className="settings-entry" onClick={startOnboarding}><span>重看新手引导<small>认识角色、模型连接与消息诊断</small></span><Icon name="arrow" /></button>
+          <button className="settings-entry" onClick={() => { setQuickStartOpen(true); setPage('chat') }}><span>首次对话准备<small>检查角色、聊天连接与唤醒状态</small></span><Icon name="arrow" /></button>
           <div className="settings-secondary">{spaceEntries.filter(item => ['advanced', 'system'].includes(item.key)).map(item => <button className="settings-entry" key={item.key} onClick={() => openSpace(item.key)}><span>{item.label}<small>{item.caption}</small></span><Icon name="arrow" /></button>)}</div>
         </div> : <div className="space-detail" data-settings-category={spacePage}>
           <div className="save-status" role="status"><span>{native ? ['chat', 'media', 'visual'].includes(spacePage) ? '点击保存设置后应用' : saveState : '界面预览 · 设置不会保存'}</span>{saveError && <><p className="error">{saveError}</p><button className="text-button" disabled={busy} onClick={() => void persistSettings().catch(() => {})}>重试保存</button></>}</div>
@@ -714,6 +767,7 @@ function App() {
           {spacePage === 'chat' && <label>连续消息合并等待（秒）<input type="number" min={0} max={30} step={0.5} value={Number(settings.mobileConfig?.sections?.runtime?.userMessageDebounceSeconds ?? 1)} onChange={e => setSettings(previous => ({ ...previous, mobileConfig: { ...previous.mobileConfig, sections: { ...previous.mobileConfig?.sections, runtime: { ...previous.mobileConfig?.sections?.runtime, userMessageDebounceSeconds: Number(e.target.value) } } } }))} /><small>等你连续说完再回复；保存后重启核心生效。</small></label>}
           </ExperiencePanel>}
           {spacePage === 'life' && <WeatherStatus bridge={scopedBridge} healthy={healthy} />}
+          {spacePage === 'life' && <PowerSettings bridge={bridge} notify={setNotice} />}
           {spacePage === 'appearance' && <AppearanceSettings appearance={appearance} native={native} busy={busy} act={act} />}
           {spacePage === 'notifications' && <NotificationSettings bridge={bridge} native={native} notify={setNotice} />}
           {spacePage === 'voice' && <VoiceSettings bridge={bridge} state={voices.state} accept={voices.accept} cardId={selected} name={active?.card.name || ""} native={native} notify={setNotice} />}
@@ -750,7 +804,7 @@ function App() {
     {exportOpen && <CharacterExportModal bridge={bridge} native={native} cardId={exportCardId} ready={native && settingsReady && !!exportCardId} name={cards.find(row => row.id === exportCardId)?.card.name || ''} config={settings.mobileConfig} revision={() => exportCardId} busy={busy} working={setBusy} close={() => setExportOpen(false)} />}
     {importCodeOpen && <CharacterImportModal busy={busy} working={setBusy} save={input => saveImportedCard(input)} close={() => setImportCodeOpen(false)} />}
     {createOpen && <div className="modal-backdrop"><section className="modal" role="dialog" aria-modal="true" aria-label="创建角色"><div className="section-title"><h2>写下一个人</h2><button aria-label="关闭" onClick={() => setCreateOpen(false)}>×</button></div><label>角色名称<input value={newName} onChange={event => setNewName(event.target.value)} maxLength={128} /></label><label>角色描述<textarea rows={6} value={newProfile} onChange={event => setNewProfile(event.target.value)} maxLength={262144} placeholder="身份、性格、说话方式与生活背景…" /></label><button className="primary wide" disabled={!newName.trim() || !newProfile.trim()} onClick={() => { const raw = JSON.stringify({ spec: 'chara_card_v2', spec_version: '2.0', data: { name: newName.trim(), description: newProfile, personality: '', scenario: '', first_mes: '', mes_example: '', extensions: {} } }); const bytes = new TextEncoder().encode(raw); let binary = ''; for (const byte of bytes) binary += String.fromCharCode(byte); setPreview({ card: parseCard(bytes), base64: btoa(binary) }); setCreateOpen(false); setNewName(''); setNewProfile('') }}>预览角色<Icon name="arrow" /></button></section></div>}
-  </div>{onboardingOpen && <Onboarding targets={onboardingTargets} background={appShell} prepare={prepareOnboarding} close={closeOnboarding} />}</>
+  </div>{historySearch && <HistorySearch key={selected} bridge={scopedBridge} background={appShell} close={() => setHistorySearch(false)} />}{onboardingOpen && <Onboarding targets={onboardingTargets} background={appShell} prepare={prepareOnboarding} close={closeOnboarding} />}</>
 }
 createRoot(document.getElementById('root')!).render(<React.StrictMode><App /></React.StrictMode>)
 

@@ -36,7 +36,7 @@ export function MemoryTools({ bridge, facts, intents, schedulingStatus = [], pau
         else { localStorage.removeItem(key); setJobId(''); setJobText(job.status === 'failed' ? job.error || '维护失败' : job.result === false ? '当前没有可整理内容，或故事已暂停' : '记忆维护已完成'); await refresh() }
       } catch (error) { if (!cancelled) setJobText(`${String(error)}；任务编号已保留，可稍后查询`) } finally { polling = false }
     }
-    void poll(); const timer = setInterval(() => void poll(), 2000)
+    void poll(); const timer = setInterval(() => { if (!document.hidden) void poll() }, 2000)
     return () => { cancelled = true; clearInterval(timer) }
   }, [jobId, cardId])
   return <>

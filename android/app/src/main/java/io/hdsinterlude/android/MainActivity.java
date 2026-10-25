@@ -68,9 +68,11 @@ public class MainActivity extends BridgeActivity {
     @Override public void onResume() {
         super.onResume();
         AppVisibility.setForeground(true);
+        HdsService.refreshPowerPolicy();
     }
     @Override public void onPause() {
         AppVisibility.setForeground(false);
+        HdsService.noteActivity();
         super.onPause();
     }
     @Override protected void onNewIntent(android.content.Intent intent) {

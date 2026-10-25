@@ -17,11 +17,13 @@ export function mediaEndpoint(base: string, suffix: string) {
   url.pathname = `${path || '/v1'}/${suffix}`
   return url.href
 }
-export function mediaJobs(options: { directory: string; identity?: string; audioDirectory?: string; diagnostics?: MessageDiagnostics; config: () => ExperienceSettings; getImage: (id: string) => string; saveImage: (bytes: Buffer) => { id: string }; delivered: (job: MediaJob) => Promise<void>; fetch?: typeof fetch }) {
+export function mediaJobs(options: { directory: string; identity?: string; paused?: boolean; audioDirectory?: string; diagnostics?: MessageDiagnostics; config: () => ExperienceSettings; getImage: (id: string) => string; saveImage: (bytes: Buffer) => { id: string }; delivered: (job: MediaJob) => Promise<void>; fetch?: typeof fetch }) {
   const db = atomicState<{ jobs: Job[] }>(join(options.directory, 'media-jobs.json'), () => ({ jobs: [] }))
   const request = options.fetch ?? fetch
   let stopped = false
+  let paused = options.paused === true
   const active = new Map<string, AbortController>()
+  const interrupted = new Set<string>()
   const tasks = new Set<Promise<unknown>>()
   const track = (task: Promise<unknown>) => { tasks.add(task); void task.then(() => tasks.delete(task), () => tasks.delete(task)) }
   const update = (id: string, change: Partial<Job>) => db.change(s => { const job = s.jobs.find(j => j.id === id); if (!job) throw new Error('任务不存在'); Object.assign(job, change); return { ...job } })
@@ -38,13 +40,14 @@ export function mediaJobs(options: { directory: string; identity?: string; audio
   db.change(s => { for (const job of s.jobs) if (['queued', 'running', 'submitted'].includes(job.status)) job.status = hasRemoteResult(job) ? 'submitted' : uncertainSubmission(job) ? 'unknown' : 'queued' })
   const publicJob = ({ route, references, ratio, submission, requestIds, ...job }: Job): MediaJob => job
   const deliver = async (job: Job, epoch = options.diagnostics?.epoch) => {
+    if (stopped || paused) return
     const started = Date.now()
     record(job, 'started', 'deliver', undefined, undefined, epoch)
     try { await options.delivered(publicJob(job)); update(job.id, { delivered: true, error: undefined }); record(job, 'succeeded', 'deliver', undefined, started, epoch) }
-    catch { const error = new MediaError('image_delivery'); update(job.id, { error: error.message }); record(job, 'failed', 'deliver', error, started, epoch) }
+    catch { const error = new MediaError('image_delivery'); update(job.id, { error: paused || interrupted.has(job.id) ? undefined : error.message }); record(job, 'failed', 'deliver', error, started, epoch) }
   }
   const run = async (initial: Job) => {
-    if (stopped || active.has(initial.id)) return
+    if (stopped || paused || active.has(initial.id)) return
     const controller = new AbortController(); active.set(initial.id, controller)
     const configured = initial.kind === 'image' ? options.config().image : options.config().stt
     const resuming = hasRemoteResult(initial)
@@ -147,22 +150,29 @@ export function mediaJobs(options: { directory: string; identity?: string; audio
         job = update(job.id, { imageId: asset.id, status: 'ready', submission: false })
         record(job, 'succeeded', phase, undefined, started, epoch)
       }
-      if (!stopped && !job.delivered) await deliver(job, epoch)
+      if (!stopped && !paused && !job.delivered) await deliver(job, epoch)
     } catch (error) {
       const job = db.read().jobs.find(j => j.id === initial.id)!
       const failure = signal.aborted ? new MediaError('timeout') : mediaFailure(error)
       const unknown = job.submission && !job.providerTaskId && !job.imageUrl
-      update(job.id, { status: unknown ? 'unknown' : 'failed', error: `${failure.message}${unknown ? ' 提交结果待确认，请勿重复生成；先在服务端核实。' : ''}` })
+      const held = paused || interrupted.has(job.id)
+      update(job.id, { status: unknown ? 'unknown' : held ? hasRemoteResult(job) ? 'submitted' : job.imageId || job.text ? 'ready' : 'queued' : 'failed', error: held && !unknown ? undefined : `${failure.message}${unknown ? ' 提交结果待确认，请勿重复生成；先在服务端核实。' : ''}` })
       record(job, 'failed', phase, failure, started, epoch)
-    } finally { active.delete(initial.id) }
+    } finally { active.delete(initial.id); interrupted.delete(initial.id) }
   }
   const timer = setInterval(() => {
-    if (stopped || active.size) return
-    const job = db.read().jobs.find(j => ['queued', 'submitted'].includes(j.status) || j.status === 'ready' && !j.delivered && !j.error)
-    if (job?.status === 'ready') { active.set(job.id, new AbortController()); track(deliver(job).finally(() => active.delete(job.id))) }
-    else if (job) track(run(job))
+    if (stopped || paused) return
+    const rows = db.read().jobs
+    // Interactive transcription has its own worker; slow image generation cannot block input.
+    for (const kind of ['stt', 'image'] as const) {
+      if (rows.some(job => job.kind === kind && active.has(job.id))) continue
+      const job = rows.find(j => j.kind === kind && (['queued', 'submitted'].includes(j.status) || j.status === 'ready' && !j.delivered && !j.error))
+      if (job?.status === 'ready') { active.set(job.id, new AbortController()); track(deliver(job).finally(() => { active.delete(job.id); interrupted.delete(job.id) })) }
+      else if (job) track(run(job))
+    }
   }, 500)
   return {
+    setPaused(value: boolean) { paused = value; if (paused) for (const [id, controller] of active) { interrupted.add(id); controller.abort() } },
     list: () => db.read().jobs.slice(-100).map(publicJob),
     latestAutonomousImageWasRejected() {
       const last = db.read().jobs.reverse().find(job => job.kind === 'image' && ['chat', 'feed'].includes(job.purpose))
@@ -172,6 +182,7 @@ export function mediaJobs(options: { directory: string; identity?: string; audio
     create(input: Partial<MediaJob> & { id: string; kind: 'image' | 'stt'; purpose: MediaJob['purpose']; entryId?: number }) {
       const requestIds = ids(input.entryId)
       try {
+        if (stopped || paused) throw new Error('故事已暂停，请先恢复运行')
         if (!/^[\w:-]{8,160}$/.test(input.id)) throw new MediaError('media_input')
         const old = db.read().jobs.find(j => j.id === input.id); if (old) return publicJob(old)
         const config = options.config(), route = input.kind === 'image' ? config.image : config.stt
@@ -187,6 +198,7 @@ export function mediaJobs(options: { directory: string; identity?: string; audio
       } catch (error) { record({ ...input, requestIds }, 'failed', 'prepare', mediaFailure(error)); throw error }
     },
     retry(id: string) {
+      if (stopped || paused) throw new Error('故事已暂停，请先恢复运行')
       const job = db.read().jobs.find(j => j.id === id)
       if (!job) throw new Error('任务不存在')
       if (job.delivered || active.has(id) || ['queued', 'running', 'submitted'].includes(job.status)) return

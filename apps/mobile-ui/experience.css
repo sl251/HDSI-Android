@@ -119,3 +119,23 @@ body { background: radial-gradient(ellipse at 0 0, color-mix(in srgb, var(--acce
 .sticker-manager .pool-tabs button[aria-pressed=true] { background: rgb(var(--surface-rgb)); color: var(--accent); box-shadow: 0 2px 8px #0001; }
 .sticker-manager select { width: 100%; padding: 12px; border: 1px solid var(--line); border-radius: 13px; }
 .sticker-manager .sticker-grid > div { background: rgba(var(--surface-rgb),.7); border: 1px solid var(--line); border-radius: 14px; padding: 8px; }
+
+/* Reading the past uses the same restrained surfaces as the story itself. */
+.history-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 0 20px;flex-wrap:wrap;min-height:48px}
+.history-search{width:min(620px,calc(100vw - 24px));max-height:88dvh;overflow:auto}
+.history-search form{display:grid;grid-template-columns:minmax(0,1fr) minmax(120px,.6fr);gap:12px;align-items:end}
+.history-search form button{grid-column:1/-1}
+.history-search input{width:100%;min-width:0;box-sizing:border-box}
+.history-results article{padding:18px 0;border-bottom:1px solid var(--line,rgba(128,128,128,.18))}
+.history-results p{white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.7;margin:8px 0}
+.history-results small{opacity:.65}
+@media(max-width:420px){.history-search form{grid-template-columns:minmax(0,1fr)}}
+.quick-start { border: 1px solid var(--line); border-radius: 20px; padding: 20px; margin: 0 0 20px; background: rgba(var(--surface-rgb), .85); }
+.quick-start h2 { font-size: 18px; }
+.quick-start ol { list-style: none; margin: 0; padding: 0; counter-reset: setup; }
+.quick-start li { counter-increment: setup; display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 16px 0; border-top: 1px solid var(--line); }
+.quick-start li::before { content: counter(setup, decimal-leading-zero); color: var(--muted); font-variant-numeric: tabular-nums; }
+.quick-start li > span { flex: 1 1 160px; }
+.quick-start small { display: block; color: var(--muted); line-height: 1.7; margin-top: 4px; }
+.quick-start button { min-height: 44px; }
+@media (max-width: 380px) { .quick-start { padding: 16px; } .quick-start li > .actions { width: 100%; } }

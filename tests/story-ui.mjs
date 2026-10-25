@@ -510,7 +510,8 @@ try {
   console.log('PASS Preview 9: failed draft retry button retains attachments and reuses the original requestId.')
   await page.getByText('收到你的消息了。', { exact: true }).waitFor()
   assert.equal(await page.locator('nav').isVisible(), true)
-  await page.getByRole('button', { name: '查看消息图片', exact: true }).click()
+  // Pagination retains earlier image messages; open the image from this retry.
+  await page.locator(`[data-read-anchor="message-${attempts[0].requestId}"]`).getByRole('button', { name: '查看消息图片', exact: true }).click()
   await page.getByRole('dialog', { name: '消息图片预览' }).waitFor()
   await page.getByRole('button', { name: '关闭图片预览' }).click()
   await page.getByRole('button', { name: '见闻', exact: true }).click()

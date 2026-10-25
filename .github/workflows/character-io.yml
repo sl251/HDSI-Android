@@ -1,7 +1,7 @@
 name: Character and media regression
 on:
   pull_request:
-    paths: ['apps/mobile-ui/**', 'packages/**', 'android/**', 'runtime/**', 'scripts/**', 'tests/**', '.github/workflows/character-io.yml']
+    paths: ['apps/mobile-ui/**', 'packages/**', 'android/**', 'runtime/**', 'upstream/**', 'scripts/**', 'tests/**', 'package*.json', 'tsconfig*.json', 'capacitor.config.ts', 'vite.config.ts', 'index.html', '.github/workflows/**']
   workflow_dispatch:
 permissions:
   contents: read
@@ -36,6 +36,7 @@ jobs:
           node tests/media-controls-ui.mjs
           node tests/message-diagnostics-ui.mjs
           node tests/experience-ui.mjs
+          node tests/preview97-ui.mjs
       - name: Exercise chat, sticker and voice flows
         run: |
           export HDS_BROWSER="$(node --input-type=module -e "import { chromium } from 'playwright-core'; console.log(chromium.executablePath())")"
@@ -62,5 +63,6 @@ jobs:
             artifacts/media-controls
             artifacts/typing-tasks
             artifacts/experience-ui
+            artifacts/preview97-ui
             artifacts/m5
             android/app/build/reports/tests

@@ -12,7 +12,8 @@ import java.util.zip.ZipInputStream
 import java.util.zip.ZipOutputStream
 
 /** Only the selected profile and its card are included. No credentials or shared QQ directory. */
-class StoryArchive(private val base: File) {
+class StoryArchive(private val base: File, private val limits: Limits = Limits()) {
+    data class Limits(val fileBytes: Long = 512L * 1024 * 1024, val totalBytes: Long = 1024L * 1024 * 1024, val entries: Int = 10000, val manifestBytes: Long = 2L * 1024 * 1024)
     private val journal = File(base, "story-operation.json")
     private fun hash(file: File): String {
         val digest = MessageDigest.getInstance("SHA-256")
@@ -26,20 +27,37 @@ class StoryArchive(private val base: File) {
         temporary.outputStream().use { stream -> stream.write(bytes); stream.fd.sync() }
         Files.move(temporary.toPath(), card(id).toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING, java.nio.file.StandardCopyOption.ATOMIC_MOVE)
     }
-    fun export(id: String, output: OutputStream) {
+    private fun exportFiles(id: String): LinkedHashMap<String, File> {
         val profile = current(id); require(File(profile, "hds.sqlite").isFile) { "当前角色尚无故事存档" }
         val files = linkedMapOf("card.json" to card(id), "card.source" to File(base, "cards/$id.source"))
         profile.walkTopDown().forEach { file ->
             require(!Files.isSymbolicLink(file.toPath())) { "存档包含符号链接，无法导出" }
             if (file.isFile) files["profile/" + file.relativeTo(profile).invariantSeparatorsPath] = file
         }
-        val manifest = JSONObject().put("format", 1).put("cardId", id).put("hds", "1.0.1-rc51").put("app", "0.1.0-preview.7.1").put("createdAt", java.time.Instant.now().toString())
+        require(files.size + 1 <= limits.entries) { "存档文件过多，超过可恢复的条目上限" }
+        var total = 0L
+        for ((name, file) in files) {
+            require(file.isFile && !Files.isSymbolicLink(file.toPath())) { "存档文件不存在或包含链接" }
+            require(name.length <= 512 && !name.contains('\\') && !name.contains(':') && name.split('/').none { it.isEmpty() || it == "." || it == ".." }) { "存档路径无效" }
+            total += file.length()
+            require(file.length() <= limits.fileBytes && total <= limits.totalBytes) { "存档超过可恢复的大小上限，请保留应用数据" }
+        }
+        require(card(id).length() <= 6 * 1024 * 1024) { "角色卡元数据过大" }
+        return files
+    }
+    /** The destination is opened only after all recovery limits and metadata have been checked. */
+    fun exportTo(id: String, openOutput: () -> OutputStream) {
+        val files = exportFiles(id)
+        val manifest = JSONObject().put("format", 2).put("dataSchema", 1).put("cardId", id).put("hds", BuildConfig.HDS_VERSION).put("app", BuildConfig.VERSION_NAME).put("createdAt", java.time.Instant.now().toString())
         val checksums = JSONObject(); for ((name, file) in files) { require(file.isFile); checksums.put(name, hash(file)) }; manifest.put("sha256", checksums)
-        ZipOutputStream(output).use { zip ->
-            zip.putNextEntry(ZipEntry("manifest.json")); zip.write(manifest.toString().toByteArray()); zip.closeEntry()
+        val metadata = manifest.toString().toByteArray(Charsets.UTF_8)
+        require(metadata.size.toLong() <= minOf(limits.fileBytes, limits.manifestBytes) && files.values.sumOf { it.length() } + metadata.size <= limits.totalBytes) { "存档清单或总大小超过可恢复上限" }
+        ZipOutputStream(openOutput()).use { zip ->
+            zip.putNextEntry(ZipEntry("manifest.json")); zip.write(metadata); zip.closeEntry()
             for ((name, file) in files) { zip.putNextEntry(ZipEntry(name)); file.inputStream().use { it.copyTo(zip) }; zip.closeEntry() }
         }
     }
+    fun export(id: String, output: OutputStream) = exportTo(id) { output }
     fun stage(id: String, input: InputStream): File {
         current(id)
         val stage = File(base, "story-staging/${UUID.randomUUID()}").apply { mkdirs() }
@@ -48,21 +66,28 @@ class StoryArchive(private val base: File) {
             ZipInputStream(input).use { zip ->
                 while (true) {
                     val entry = zip.nextEntry ?: break; val name = entry.name
-                    require(!entry.isDirectory && seen.add(name) && seen.size <= 10000 && name.length <= 512) { "存档条目无效或重复" }
+                    require(!entry.isDirectory && seen.add(name) && seen.size <= limits.entries && name.length <= 512) { "存档条目无效或重复" }
                     require(name in listOf("manifest.json", "card.json", "card.source") || name.startsWith("profile/")) { "存档包含未知条目" }
                     require(!name.contains('\\') && name.split('/').none { it == ".." || it == "." || it.isEmpty() } && !name.contains(':')) { "存档路径无效" }
                     val target = File(stage, name).canonicalFile
                     require(target.toPath().startsWith(stage.canonicalFile.toPath())) { "存档路径越界" }
                     target.parentFile.mkdirs(); target.outputStream().use { out ->
                         val block = ByteArray(65536); var size = 0L
-                        while (true) { val count = zip.read(block); if (count < 0) break; size += count; total += count; require(size <= 512L * 1024 * 1024 && total <= 1024L * 1024 * 1024) { "存档超过大小限制" }; out.write(block, 0, count) }
+                        while (true) { val count = zip.read(block); if (count < 0) break; size += count; total += count; require(size <= limits.fileBytes && total <= limits.totalBytes && (name != "manifest.json" || size <= limits.manifestBytes)) { "存档超过大小限制" }; out.write(block, 0, count) }
                     }
                     zip.closeEntry()
                 }
             }
-            val metadata = File(stage, "manifest.json"); require(metadata.length() <= 2 * 1024 * 1024) { "清单过大" }
+            val metadata = File(stage, "manifest.json"); require(metadata.length() <= limits.manifestBytes) { "清单过大" }
             val manifest = JSONObject(metadata.readText())
-            require(manifest.getInt("format") == 1 && manifest.getString("cardId") == id && manifest.getString("hds") == "1.0.1-rc51") { "请选择当前角色的 rc51 存档" }
+            require(manifest.getString("cardId") == id) { "请选择当前角色的存档" }
+            val compatible = when (manifest.getInt("format")) {
+                // Pre-9.7 exports used rc51 as a fixed label, including rc56/57 data.
+                1 -> manifest.optString("hds") == "1.0.1-rc51"
+                2 -> manifest.optInt("dataSchema") == 1 && manifest.optString("hds") == BuildConfig.HDS_VERSION
+                else -> false
+            }
+            require(compatible) { "存档格式或引擎版本不兼容，请使用对应版本恢复" }
             val checksums = manifest.getJSONObject("sha256"); val keys = checksums.keys().asSequence().toSet()
             require(keys == seen - "manifest.json") { "存档文件与清单不一致" }
             for (name in keys) require(hash(File(stage, name)) == checksums.getString(name)) { "存档校验失败：$name" }

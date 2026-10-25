@@ -33,7 +33,7 @@ export function Inbox({ bridge, healthy, native, configure, onRootBack, backHand
         if (selected) { const history = await rpc<QQMessage[]>('qq.history', { conversation: selected }); if (!cancelled) setMessages(history) }
       } catch (error) { if (!cancelled) setNotice(error instanceof Error ? error.message : String(error)) } finally { running = false }
     }
-    void poll(); const timer = setInterval(() => void poll(), 2000)
+    void poll(); const timer = setInterval(() => { if (!document.hidden) void poll() }, 2000)
     return () => { cancelled = true; clearInterval(timer) }
   }, [healthy, native, selected])
   useEffect(() => { scroll.current?.scrollIntoView({ behavior: 'smooth', block: 'end' }) }, [messages.length])

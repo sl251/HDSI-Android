@@ -59,6 +59,7 @@ class HdsRuntime private constructor(private val context: Context) {
     }
     @Volatile var messagePush: ((String, String, CharacterMessage, Boolean) -> Unit)? = null
     @Volatile var replyStream: ((JSONObject) -> Unit)? = null
+    @Volatile var historyChanged: ((String) -> Unit)? = null
     @Volatile var runningCardId = ""
         private set
     @Volatile var runningCardName = ""
@@ -334,7 +335,7 @@ class HdsRuntime private constructor(private val context: Context) {
                 runCatching { val event = JSONObject(it.removePrefix("HDS_REPLY_STREAM ")); if (event.toString().length <= 12000) replyStream?.invoke(event.put("cardId", cardId)) }
             } else if (it.startsWith("HDS_MSG_PUSH ")) {
                 val message = parseMessagePush(it)
-                if (message != null) messagePush?.invoke(cardId, cardName, message, AppVisibility.visible)
+                if (message != null) { messagePush?.invoke(cardId, cardName, message, AppVisibility.visible); historyChanged?.invoke(cardId) }
                 else log("忽略无效角色消息标记")
             } else {
                 if (it == "HDS_MOBILE_CLEAN_STOP") cleanStop = true
@@ -445,6 +446,7 @@ class HdsRuntime private constructor(private val context: Context) {
         process = null; token = ""; secrets = emptyList(); port = 0; state = "stopped"; progress = "HDS 已停止，剧情保留在本机"; error = ""
     }
     fun rpc(method: String, payload: JSONObject): JSONObject {
+        if (method in setOf("messages.sendLocal", "turn.retry", "media.create", "media.retry", "story.resume", "feed.mutate", "qq.send")) HdsService.noteActivity()
         require(!payload.has("expectedCardId") || payload.optString("expectedCardId") == store.publicSettings().optString("activeCard")) { "故事已切换，请回到原故事继续" }
         require(!profileMaintenance || method == "health") { "故事正在备份或维护" }
         if (method == "experience.configure") secrets = (secrets + listOf("stt", "image").map { payload.optJSONObject(it)?.optString("apiKey") ?: "" }.filter { it.isNotEmpty() }).distinct()

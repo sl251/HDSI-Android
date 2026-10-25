@@ -33,7 +33,8 @@ class HdsRuntimePlugin : Plugin() {
     private val retrievalIo = Executors.newSingleThreadExecutor()
     private fun runtime() = HdsRuntime.get(context)
     private val streamListener: (JSONObject) -> Unit = { notifyListeners("replyStream", JSObject.fromJSONObject(it)) }
-    override fun load() { super.load(); runtime().replyStream = streamListener }
+    private val historyListener: (String) -> Unit = { notifyListeners("messageReceived", JSObject().put("cardId", it)) }
+    override fun load() { super.load(); runtime().replyStream = streamListener; runtime().historyChanged = historyListener }
     private fun resolve(call: PluginCall, result: JSONObject = JSONObject()) { call.resolve(JSObject.fromJSONObject(result)) }
     private fun run(call: PluginCall, operation: () -> JSONObject) { io.execute { try { resolve(call, operation()) } catch (failure: Throwable) { call.reject(failure.message ?: "原生操作失败", failure.javaClass.simpleName) } } }
     @PluginMethod fun notificationSettings(call: PluginCall) { resolve(call, CharacterNotifications(context).status()) }
@@ -87,8 +88,10 @@ class HdsRuntimePlugin : Plugin() {
     }
     @PluginMethod fun stopVoiceRecording(call: PluginCall) { run(call) { voiceRecorder.stop() } }
     @PluginMethod fun cancelVoiceRecording(call: PluginCall) { run(call) { voiceRecorder.cancel(); JSONObject() } }
-    override fun handleOnDestroy() { if (runtime().replyStream === streamListener) runtime().replyStream = null; runtime().cancelModelProbe(); voiceRecorder.cancel(); super.handleOnDestroy() }
+    override fun handleOnDestroy() { if (runtime().replyStream === streamListener) runtime().replyStream = null; if (runtime().historyChanged === historyListener) runtime().historyChanged = null; runtime().cancelModelProbe(); voiceRecorder.cancel(); super.handleOnDestroy() }
     @PluginMethod fun status(call: PluginCall) { resolve(call, runtime().status()) }
+    @PluginMethod fun powerSettings(call: PluginCall) { run(call) { RuntimePower(context).read() } }
+    @PluginMethod fun savePowerSettings(call: PluginCall) { run(call) { RuntimePower(context).save(call.getString("mode") ?: "") } }
     @PluginMethod fun settings(call: PluginCall) { run(call) { runtime().store.publicSettings() } }
     @PluginMethod fun experienceSettings(call: PluginCall) { run(call) { runtime().store.experienceSettings() } }
     @PluginMethod fun saveExperience(call: PluginCall) { run(call) {
@@ -187,7 +190,7 @@ class HdsRuntimePlugin : Plugin() {
         run(call) {
             val id = runtime().store.publicSettings().getString("activeCard")
             runtime().maintainStory(id) {
-                context.contentResolver.openOutputStream(result.data!!.data!!, "wt")?.use { StoryArchive(runtime().store.base).export(id, it) } ?: throw IllegalArgumentException("无法写入存档")
+                StoryArchive(runtime().store.base).exportTo(id) { context.contentResolver.openOutputStream(result.data!!.data!!, "wt") ?: throw IllegalArgumentException("无法写入存档") }
             }
             JSONObject().put("cancelled", false)
         }

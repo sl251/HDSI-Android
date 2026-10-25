@@ -1,0 +1,933 @@
+[
+  {
+    "file": "upstream/hds-interlude/src/desktop-bridge.ts",
+    "code": 18048,
+    "line": 307,
+    "column": 38,
+    "message": "'port' is possibly 'undefined'."
+  },
+  {
+    "file": "upstream/hds-interlude/src/index.ts",
+    "code": 2322,
+    "line": 550,
+    "column": 14,
+    "message": "Type 'Schema<ObjectS<{ presetSync: Schema<ObjectS<{ enabled: Schema<boolean, boolean>; baseUrl: Schema<string, string>; shareCode: Schema<string, string>; autoUpdate: Schema<boolean, boolean>; sections: Schema<...>; applyToCurrentStory: Schema<...>; }>, ObjectT<...>>; ... 21 more ...; chatRhythm: Schema<...>; }>, ObjectT<...' is not assignable to type 'Schema<Config>'.\n  The types returned by 'computed(...)' are incompatible between these types.\n    Type 'Schema<Computed<ObjectS<{ presetSync: Schema<ObjectS<{ enabled: Schema<boolean, boolean>; baseUrl: Schema<string, string>; shareCode: Schema<string, string>; autoUpdate: Schema<boolean, boolean>; sections: Schema<...>; applyToCurrentStory: Schema<...>; }>, ObjectT<...>>; ... 21 more ...; chatRhythm: Schema<...>; }>>...' is not assignable to type 'Schema<Computed<Config>, Computed<Config>>'.\n      Types of parameters 'data' and 'data' are incompatible.\n        Type 'Computed<Config> | null | undefined' is not assignable to type 'Computed<ObjectS<{ presetSync: Schema<ObjectS<{ enabled: Schema<boolean, boolean>; baseUrl: Schema<string, string>; shareCode: Schema<string, string>; autoUpdate: Schema<boolean, boolean>; sections: Schema<...>; applyToCurrentStory: Schema<...>; }>, ObjectT<...>>; ... 21 more ...; chatRhythm: Schema<...>; }>> | null...'.\n          Type 'Config' is not assignable to type 'Computed<ObjectS<{ presetSync: Schema<ObjectS<{ enabled: Schema<boolean, boolean>; baseUrl: Schema<string, string>; shareCode: Schema<string, string>; autoUpdate: Schema<boolean, boolean>; sections: Schema<...>; applyToCurrentStory: Schema<...>; }>, ObjectT<...>>; ... 21 more ...; chatRhythm: Schema<...>; }>> | null...'.\n            Type 'Config' is not assignable to type 'ObjectS<{ presetSync: Schema<ObjectS<{ enabled: Schema<boolean, boolean>; baseUrl: Schema<string, string>; shareCode: Schema<string, string>; autoUpdate: Schema<boolean, boolean>; sections: Schema<...>; applyToCurrentStory: Schema<...>; }>, ObjectT<...>>; ... 21 more ...; chatRhythm: Schema<...>; }>'.\n              Type 'Config' is not assignable to type '{ presetSync?: ({ enabled?: boolean | null | undefined; baseUrl?: string | null | undefined; shareCode?: string | null | undefined; autoUpdate?: boolean | null | undefined; sections?: string[] | ... 1 more ... | undefined; applyToCurrentStory?: boolean | ... 1 more ... | undefined; } & Dict) | null | undefined; ... ...'.\n                Types of property 'worldSeeder' are incompatible.\n                  Type 'unknown' is not assignable to type '({ enabled?: boolean | null | undefined; cadenceMinutes?: number | null | undefined; maxPending?: number | null | undefined; dailyCap?: number | null | undefined; maxHorizonHours?: number | ... 1 more ... | undefined; temperature?: number | ... 1 more ... | undefined; maxTokens?: number | ... 1 more ... | undefined;...'."
+  },
+  {
+    "file": "upstream/hds-interlude/src/index.ts",
+    "code": 2345,
+    "line": 659,
+    "column": 55,
+    "message": "Argument of type 'string | undefined' is not assignable to parameter of type 'string'.\n  Type 'undefined' is not assignable to type 'string'."
+  },
+  {
+    "file": "upstream/hds-interlude/src/index.ts",
+    "code": 2345,
+    "line": 662,
+    "column": 75,
+    "message": "Argument of type 'string | undefined' is not assignable to parameter of type 'string'.\n  Type 'undefined' is not assignable to type 'string'."
+  },
+  {
+    "file": "upstream/hds-interlude/src/index.ts",
+    "code": 2345,
+    "line": 717,
+    "column": 96,
+    "message": "Argument of type 'Session<never, never, Context> | undefined' is not assignable to parameter of type 'Session<never, never, Context>'.\n  Type 'undefined' is not assignable to type 'Session<never, never, Context>'."
+  },
+  {
+    "file": "upstream/hds-interlude/src/index.ts",
+    "code": 2345,
+    "line": 720,
+    "column": 58,
+    "message": "Argument of type 'Session<never, never, Context> | undefined' is not assignable to parameter of type 'Session<never, never, Context>'.\n  Type 'undefined' is not assignable to type 'Session<never, never, Context>'."
+  },
+  {
+    "file": "upstream/hds-interlude/src/index.ts",
+    "code": 2345,
+    "line": 723,
+    "column": 70,
+    "message": "Argument of type 'Session<never, never, Context> | undefined' is not assignable to parameter of type 'Session<never, never, Context>'.\n  Type 'undefined' is not assignable to type 'Session<never, never, Context>'."
+  },
+  {
+    "file": "upstream/hds-interlude/src/index.ts",
+    "code": 2345,
+    "line": 727,
+    "column": 36,
+    "message": "Argument of type 'Session<never, never, Context> | undefined' is not assignable to parameter of type 'Session<never, never, Context>'.\n  Type 'undefined' is not assignable to type 'Session<never, never, Context>'."
+  },
+  {
+    "file": "upstream/hds-interlude/src/index.ts",
+    "code": 2345,
+    "line": 728,
+    "column": 49,
+    "message": "Argument of type 'Session<never, never, Context> | undefined' is not assignable to parameter of type 'Session<never, never, Context>'.\n  Type 'undefined' is not assignable to type 'Session<never, never, Context>'."
+  },
+  {
+    "file": "upstream/hds-interlude/src/index.ts",
+    "code": 2345,
+    "line": 742,
+    "column": 36,
+    "message": "Argument of type 'Session<never, never, Context> | undefined' is not assignable to parameter of type 'Session<never, never, Context>'.\n  Type 'undefined' is not assignable to type 'Session<never, never, Context>'."
+  },
+  {
+    "file": "upstream/hds-interlude/src/index.ts",
+    "code": 2345,
+    "line": 743,
+    "column": 49,
+    "message": "Argument of type 'Session<never, never, Context> | undefined' is not assignable to parameter of type 'Session<never, never, Context>'.\n  Type 'undefined' is not assignable to type 'Session<never, never, Context>'."
+  },
+  {
+    "file": "upstream/hds-interlude/src/index.ts",
+    "code": 2345,
+    "line": 754,
+    "column": 36,
+    "message": "Argument of type 'Session<never, never, Context> | undefined' is not assignable to parameter of type 'Session<never, never, Context>'.\n  Type 'undefined' is not assignable to type 'Session<never, never, Context>'."
+  },
+  {
+    "file": "upstream/hds-interlude/src/index.ts",
+    "code": 2345,
+    "line": 769,
+    "column": 36,
+    "message": "Argument of type 'Session<never, never, Context> | undefined' is not assignable to parameter of type 'Session<never, never, Context>'.\n  Type 'undefined' is not assignable to type 'Session<never, never, Context>'."
+  },
+  {
+    "file": "upstream/hds-interlude/src/index.ts",
+    "code": 2345,
+    "line": 778,
+    "column": 36,
+    "message": "Argument of type 'Session<never, never, Context> | undefined' is not assignable to parameter of type 'Session<never, never, Context>'.\n  Type 'undefined' is not assignable to type 'Session<never, never, Context>'."
+  },
+  {
+    "file": "upstream/hds-interlude/src/index.ts",
+    "code": 2345,
+    "line": 788,
+    "column": 36,
+    "message": "Argument of type 'Session<never, never, Context> | undefined' is not assignable to parameter of type 'Session<never, never, Context>'.\n  Type 'undefined' is not assignable to type 'Session<never, never, Context>'."
+  },
+  {
+    "file": "upstream/hds-interlude/src/index.ts",
+    "code": 2345,
+    "line": 789,
+    "column": 49,
+    "message": "Argument of type 'Session<never, never, Context> | undefined' is not assignable to parameter of type 'Session<never, never, Context>'.\n  Type 'undefined' is not assignable to type 'Session<never, never, Context>'."
+  },
+  {
+    "file": "upstream/hds-interlude/src/index.ts",
+    "code": 2345,
+    "line": 812,
+    "column": 36,
+    "message": "Argument of type 'Session<never, never, Context> | undefined' is not assignable to parameter of type 'Session<never, never, Context>'.\n  Type 'undefined' is not assignable to type 'Session<never, never, Context>'."
+  },
+  {
+    "file": "upstream/hds-interlude/src/index.ts",
+    "code": 2345,
+    "line": 828,
+    "column": 49,
+    "message": "Argument of type 'Session<never, never, Context> | undefined' is not assignable to parameter of type 'Session<never, never, Context>'.\n  Type 'undefined' is not assignable to type 'Session<never, never, Context>'."
+  },
+  {
+    "file": "upstream/hds-interlude/src/index.ts",
+    "code": 2345,
+    "line": 849,
+    "column": 58,
+    "message": "Argument of type 'Session<never, never, Context> | undefined' is not assignable to parameter of type 'Session<never, never, Context>'.\n  Type 'undefined' is not assignable to type 'Session<never, never, Context>'."
+  },
+  {
+    "file": "upstream/hds-interlude/src/index.ts",
+    "code": 2345,
+    "line": 852,
+    "column": 58,
+    "message": "Argument of type 'Session<never, never, Context> | undefined' is not assignable to parameter of type 'Session<never, never, Context>'.\n  Type 'undefined' is not assignable to type 'Session<never, never, Context>'."
+  },
+  {
+    "file": "upstream/hds-interlude/src/index.ts",
+    "code": 2345,
+    "line": 856,
+    "column": 36,
+    "message": "Argument of type 'Session<never, never, Context> | undefined' is not assignable to parameter of type 'Session<never, never, Context>'.\n  Type 'undefined' is not assignable to type 'Session<never, never, Context>'."
+  },
+  {
+    "file": "upstream/hds-interlude/src/index.ts",
+    "code": 2345,
+    "line": 857,
+    "column": 49,
+    "message": "Argument of type 'Session<never, never, Context> | undefined' is not assignable to parameter of type 'Session<never, never, Context>'.\n  Type 'undefined' is not assignable to type 'Session<never, never, Context>'."
+  },
+  {
+    "file": "upstream/hds-interlude/src/index.ts",
+    "code": 2345,
+    "line": 866,
+    "column": 36,
+    "message": "Argument of type 'Session<never, never, Context> | undefined' is not assignable to parameter of type 'Session<never, never, Context>'.\n  Type 'undefined' is not assignable to type 'Session<never, never, Context>'."
+  },
+  {
+    "file": "upstream/hds-interlude/src/index.ts",
+    "code": 2345,
+    "line": 867,
+    "column": 34,
+    "message": "Argument of type 'Session<never, never, Context> | undefined' is not assignable to parameter of type 'Session<never, never, Context>'.\n  Type 'undefined' is not assignable to type 'Session<never, never, Context>'."
+  },
+  {
+    "file": "upstream/hds-interlude/src/index.ts",
+    "code": 2345,
+    "line": 868,
+    "column": 49,
+    "message": "Argument of type 'Session<never, never, Context> | undefined' is not assignable to parameter of type 'Session<never, never, Context>'.\n  Type 'undefined' is not assignable to type 'Session<never, never, Context>'."
+  },
+  {
+    "file": "upstream/hds-interlude/src/index.ts",
+    "code": 2345,
+    "line": 876,
+    "column": 49,
+    "message": "Argument of type 'Session<never, never, Context> | undefined' is not assignable to parameter of type 'Session<never, never, Context>'.\n  Type 'undefined' is not assignable to type 'Session<never, never, Context>'."
+  },
+  {
+    "file": "upstream/hds-interlude/src/index.ts",
+    "code": 2345,
+    "line": 878,
+    "column": 57,
+    "message": "Argument of type 'Session<never, never, Context> | undefined' is not assignable to parameter of type 'Session<never, never, Context>'.\n  Type 'undefined' is not assignable to type 'Session<never, never, Context>'."
+  },
+  {
+    "file": "upstream/hds-interlude/src/index.ts",
+    "code": 2345,
+    "line": 888,
+    "column": 49,
+    "message": "Argument of type 'Session<never, never, Context> | undefined' is not assignable to parameter of type 'Session<never, never, Context>'.\n  Type 'undefined' is not assignable to type 'Session<never, never, Context>'."
+  },
+  {
+    "file": "upstream/hds-interlude/src/index.ts",
+    "code": 2345,
+    "line": 890,
+    "column": 57,
+    "message": "Argument of type 'Session<never, never, Context> | undefined' is not assignable to parameter of type 'Session<never, never, Context>'.\n  Type 'undefined' is not assignable to type 'Session<never, never, Context>'."
+  },
+  {
+    "file": "upstream/hds-interlude/src/index.ts",
+    "code": 2345,
+    "line": 898,
+    "column": 49,
+    "message": "Argument of type 'Session<never, never, Context> | undefined' is not assignable to parameter of type 'Session<never, never, Context>'.\n  Type 'undefined' is not assignable to type 'Session<never, never, Context>'."
+  },
+  {
+    "file": "upstream/hds-interlude/src/index.ts",
+    "code": 2345,
+    "line": 900,
+    "column": 57,
+    "message": "Argument of type 'Session<never, never, Context> | undefined' is not assignable to parameter of type 'Session<never, never, Context>'.\n  Type 'undefined' is not assignable to type 'Session<never, never, Context>'."
+  },
+  {
+    "file": "upstream/hds-interlude/src/index.ts",
+    "code": 18048,
+    "line": 908,
+    "column": 45,
+    "message": "'session' is possibly 'undefined'."
+  },
+  {
+    "file": "upstream/hds-interlude/src/index.ts",
+    "code": 2345,
+    "line": 919,
+    "column": 36,
+    "message": "Argument of type 'Session<never, never, Context> | undefined' is not assignable to parameter of type 'Session<never, never, Context>'.\n  Type 'undefined' is not assignable to type 'Session<never, never, Context>'."
+  },
+  {
+    "file": "upstream/hds-interlude/src/index.ts",
+    "code": 2345,
+    "line": 920,
+    "column": 49,
+    "message": "Argument of type 'Session<never, never, Context> | undefined' is not assignable to parameter of type 'Session<never, never, Context>'.\n  Type 'undefined' is not assignable to type 'Session<never, never, Context>'."
+  },
+  {
+    "file": "upstream/hds-interlude/src/index.ts",
+    "code": 2345,
+    "line": 928,
+    "column": 36,
+    "message": "Argument of type 'Session<never, never, Context> | undefined' is not assignable to parameter of type 'Session<never, never, Context>'.\n  Type 'undefined' is not assignable to type 'Session<never, never, Context>'."
+  },
+  {
+    "file": "upstream/hds-interlude/src/index.ts",
+    "code": 2345,
+    "line": 929,
+    "column": 49,
+    "message": "Argument of type 'Session<never, never, Context> | undefined' is not assignable to parameter of type 'Session<never, never, Context>'.\n  Type 'undefined' is not assignable to type 'Session<never, never, Context>'."
+  },
+  {
+    "file": "upstream/hds-interlude/src/index.ts",
+    "code": 2345,
+    "line": 938,
+    "column": 36,
+    "message": "Argument of type 'Session<never, never, Context> | undefined' is not assignable to parameter of type 'Session<never, never, Context>'.\n  Type 'undefined' is not assignable to type 'Session<never, never, Context>'."
+  },
+  {
+    "file": "upstream/hds-interlude/src/index.ts",
+    "code": 2345,
+    "line": 939,
+    "column": 49,
+    "message": "Argument of type 'Session<never, never, Context> | undefined' is not assignable to parameter of type 'Session<never, never, Context>'.\n  Type 'undefined' is not assignable to type 'Session<never, never, Context>'."
+  },
+  {
+    "file": "upstream/hds-interlude/src/index.ts",
+    "code": 2345,
+    "line": 946,
+    "column": 36,
+    "message": "Argument of type 'Session<never, never, Context> | undefined' is not assignable to parameter of type 'Session<never, never, Context>'.\n  Type 'undefined' is not assignable to type 'Session<never, never, Context>'."
+  },
+  {
+    "file": "upstream/hds-interlude/src/index.ts",
+    "code": 2345,
+    "line": 947,
+    "column": 49,
+    "message": "Argument of type 'Session<never, never, Context> | undefined' is not assignable to parameter of type 'Session<never, never, Context>'.\n  Type 'undefined' is not assignable to type 'Session<never, never, Context>'."
+  },
+  {
+    "file": "upstream/hds-interlude/src/index.ts",
+    "code": 2345,
+    "line": 956,
+    "column": 36,
+    "message": "Argument of type 'Session<never, never, Context> | undefined' is not assignable to parameter of type 'Session<never, never, Context>'.\n  Type 'undefined' is not assignable to type 'Session<never, never, Context>'."
+  },
+  {
+    "file": "upstream/hds-interlude/src/index.ts",
+    "code": 2345,
+    "line": 958,
+    "column": 49,
+    "message": "Argument of type 'Session<never, never, Context> | undefined' is not assignable to parameter of type 'Session<never, never, Context>'.\n  Type 'undefined' is not assignable to type 'Session<never, never, Context>'."
+  },
+  {
+    "file": "upstream/hds-interlude/src/index.ts",
+    "code": 2345,
+    "line": 967,
+    "column": 36,
+    "message": "Argument of type 'Session<never, never, Context> | undefined' is not assignable to parameter of type 'Session<never, never, Context>'.\n  Type 'undefined' is not assignable to type 'Session<never, never, Context>'."
+  },
+  {
+    "file": "upstream/hds-interlude/src/index.ts",
+    "code": 2345,
+    "line": 968,
+    "column": 49,
+    "message": "Argument of type 'Session<never, never, Context> | undefined' is not assignable to parameter of type 'Session<never, never, Context>'.\n  Type 'undefined' is not assignable to type 'Session<never, never, Context>'."
+  },
+  {
+    "file": "upstream/hds-interlude/src/index.ts",
+    "code": 2345,
+    "line": 975,
+    "column": 36,
+    "message": "Argument of type 'Session<never, never, Context> | undefined' is not assignable to parameter of type 'Session<never, never, Context>'.\n  Type 'undefined' is not assignable to type 'Session<never, never, Context>'."
+  },
+  {
+    "file": "upstream/hds-interlude/src/index.ts",
+    "code": 2345,
+    "line": 976,
+    "column": 49,
+    "message": "Argument of type 'Session<never, never, Context> | undefined' is not assignable to parameter of type 'Session<never, never, Context>'.\n  Type 'undefined' is not assignable to type 'Session<never, never, Context>'."
+  },
+  {
+    "file": "upstream/hds-interlude/src/index.ts",
+    "code": 2345,
+    "line": 991,
+    "column": 36,
+    "message": "Argument of type 'Session<never, never, Context> | undefined' is not assignable to parameter of type 'Session<never, never, Context>'.\n  Type 'undefined' is not assignable to type 'Session<never, never, Context>'."
+  },
+  {
+    "file": "upstream/hds-interlude/src/index.ts",
+    "code": 2345,
+    "line": 992,
+    "column": 49,
+    "message": "Argument of type 'Session<never, never, Context> | undefined' is not assignable to parameter of type 'Session<never, never, Context>'.\n  Type 'undefined' is not assignable to type 'Session<never, never, Context>'."
+  },
+  {
+    "file": "upstream/hds-interlude/src/index.ts",
+    "code": 2345,
+    "line": 999,
+    "column": 36,
+    "message": "Argument of type 'Session<never, never, Context> | undefined' is not assignable to parameter of type 'Session<never, never, Context>'.\n  Type 'undefined' is not assignable to type 'Session<never, never, Context>'."
+  },
+  {
+    "file": "upstream/hds-interlude/src/index.ts",
+    "code": 2345,
+    "line": 1000,
+    "column": 49,
+    "message": "Argument of type 'Session<never, never, Context> | undefined' is not assignable to parameter of type 'Session<never, never, Context>'.\n  Type 'undefined' is not assignable to type 'Session<never, never, Context>'."
+  },
+  {
+    "file": "upstream/hds-interlude/src/index.ts",
+    "code": 2345,
+    "line": 1015,
+    "column": 36,
+    "message": "Argument of type 'Session<never, never, Context> | undefined' is not assignable to parameter of type 'Session<never, never, Context>'.\n  Type 'undefined' is not assignable to type 'Session<never, never, Context>'."
+  },
+  {
+    "file": "upstream/hds-interlude/src/index.ts",
+    "code": 2345,
+    "line": 1016,
+    "column": 49,
+    "message": "Argument of type 'Session<never, never, Context> | undefined' is not assignable to parameter of type 'Session<never, never, Context>'.\n  Type 'undefined' is not assignable to type 'Session<never, never, Context>'."
+  },
+  {
+    "file": "upstream/hds-interlude/src/index.ts",
+    "code": 2345,
+    "line": 1023,
+    "column": 36,
+    "message": "Argument of type 'Session<never, never, Context> | undefined' is not assignable to parameter of type 'Session<never, never, Context>'.\n  Type 'undefined' is not assignable to type 'Session<never, never, Context>'."
+  },
+  {
+    "file": "upstream/hds-interlude/src/index.ts",
+    "code": 2345,
+    "line": 1024,
+    "column": 49,
+    "message": "Argument of type 'Session<never, never, Context> | undefined' is not assignable to parameter of type 'Session<never, never, Context>'.\n  Type 'undefined' is not assignable to type 'Session<never, never, Context>'."
+  },
+  {
+    "file": "upstream/hds-interlude/src/index.ts",
+    "code": 2345,
+    "line": 1031,
+    "column": 36,
+    "message": "Argument of type 'Session<never, never, Context> | undefined' is not assignable to parameter of type 'Session<never, never, Context>'.\n  Type 'undefined' is not assignable to type 'Session<never, never, Context>'."
+  },
+  {
+    "file": "upstream/hds-interlude/src/index.ts",
+    "code": 2345,
+    "line": 1034,
+    "column": 49,
+    "message": "Argument of type 'Session<never, never, Context> | undefined' is not assignable to parameter of type 'Session<never, never, Context>'.\n  Type 'undefined' is not assignable to type 'Session<never, never, Context>'."
+  },
+  {
+    "file": "upstream/hds-interlude/src/index.ts",
+    "code": 2345,
+    "line": 1039,
+    "column": 34,
+    "message": "Argument of type 'Session<never, never, Context> | undefined' is not assignable to parameter of type 'Session<never, never, Context>'.\n  Type 'undefined' is not assignable to type 'Session<never, never, Context>'."
+  },
+  {
+    "file": "upstream/hds-interlude/src/index.ts",
+    "code": 2345,
+    "line": 1047,
+    "column": 49,
+    "message": "Argument of type 'Session<never, never, Context> | undefined' is not assignable to parameter of type 'Session<never, never, Context>'.\n  Type 'undefined' is not assignable to type 'Session<never, never, Context>'."
+  },
+  {
+    "file": "upstream/hds-interlude/src/index.ts",
+    "code": 2345,
+    "line": 1064,
+    "column": 36,
+    "message": "Argument of type 'Session<never, never, Context> | undefined' is not assignable to parameter of type 'Session<never, never, Context>'.\n  Type 'undefined' is not assignable to type 'Session<never, never, Context>'."
+  },
+  {
+    "file": "upstream/hds-interlude/src/index.ts",
+    "code": 2345,
+    "line": 1065,
+    "column": 49,
+    "message": "Argument of type 'Session<never, never, Context> | undefined' is not assignable to parameter of type 'Session<never, never, Context>'.\n  Type 'undefined' is not assignable to type 'Session<never, never, Context>'."
+  },
+  {
+    "file": "upstream/hds-interlude/src/index.ts",
+    "code": 2345,
+    "line": 1073,
+    "column": 49,
+    "message": "Argument of type 'Session<never, never, Context> | undefined' is not assignable to parameter of type 'Session<never, never, Context>'.\n  Type 'undefined' is not assignable to type 'Session<never, never, Context>'."
+  },
+  {
+    "file": "upstream/hds-interlude/src/index.ts",
+    "code": 2345,
+    "line": 1096,
+    "column": 53,
+    "message": "Argument of type 'Session<never, never, Context> | undefined' is not assignable to parameter of type 'Session<never, never, Context>'.\n  Type 'undefined' is not assignable to type 'Session<never, never, Context>'."
+  },
+  {
+    "file": "upstream/hds-interlude/src/index.ts",
+    "code": 2345,
+    "line": 1099,
+    "column": 53,
+    "message": "Argument of type 'Session<never, never, Context> | undefined' is not assignable to parameter of type 'Session<never, never, Context>'.\n  Type 'undefined' is not assignable to type 'Session<never, never, Context>'."
+  },
+  {
+    "file": "upstream/hds-interlude/src/index.ts",
+    "code": 2345,
+    "line": 1102,
+    "column": 40,
+    "message": "Argument of type 'Session<never, never, Context> | undefined' is not assignable to parameter of type 'Session<never, never, Context>'.\n  Type 'undefined' is not assignable to type 'Session<never, never, Context>'."
+  },
+  {
+    "file": "upstream/hds-interlude/src/index.ts",
+    "code": 2345,
+    "line": 1103,
+    "column": 47,
+    "message": "Argument of type 'Session<never, never, Context> | undefined' is not assignable to parameter of type 'Session<never, never, Context>'.\n  Type 'undefined' is not assignable to type 'Session<never, never, Context>'."
+  },
+  {
+    "file": "upstream/hds-interlude/src/index.ts",
+    "code": 2345,
+    "line": 1105,
+    "column": 45,
+    "message": "Argument of type 'Session<never, never, Context> | undefined' is not assignable to parameter of type 'Session<never, never, Context>'.\n  Type 'undefined' is not assignable to type 'Session<never, never, Context>'."
+  },
+  {
+    "file": "upstream/hds-interlude/src/index.ts",
+    "code": 2345,
+    "line": 1120,
+    "column": 36,
+    "message": "Argument of type 'Session<never, never, Context> | undefined' is not assignable to parameter of type 'Session<never, never, Context>'.\n  Type 'undefined' is not assignable to type 'Session<never, never, Context>'."
+  },
+  {
+    "file": "upstream/hds-interlude/src/index.ts",
+    "code": 2345,
+    "line": 1121,
+    "column": 34,
+    "message": "Argument of type 'Session<never, never, Context> | undefined' is not assignable to parameter of type 'Session<never, never, Context>'.\n  Type 'undefined' is not assignable to type 'Session<never, never, Context>'."
+  },
+  {
+    "file": "upstream/hds-interlude/src/index.ts",
+    "code": 2345,
+    "line": 1137,
+    "column": 36,
+    "message": "Argument of type 'Session<never, never, Context> | undefined' is not assignable to parameter of type 'Session<never, never, Context>'.\n  Type 'undefined' is not assignable to type 'Session<never, never, Context>'."
+  },
+  {
+    "file": "upstream/hds-interlude/src/index.ts",
+    "code": 2345,
+    "line": 1138,
+    "column": 34,
+    "message": "Argument of type 'Session<never, never, Context> | undefined' is not assignable to parameter of type 'Session<never, never, Context>'.\n  Type 'undefined' is not assignable to type 'Session<never, never, Context>'."
+  },
+  {
+    "file": "upstream/hds-interlude/src/index.ts",
+    "code": 2345,
+    "line": 1139,
+    "column": 49,
+    "message": "Argument of type 'Session<never, never, Context> | undefined' is not assignable to parameter of type 'Session<never, never, Context>'.\n  Type 'undefined' is not assignable to type 'Session<never, never, Context>'."
+  },
+  {
+    "file": "upstream/hds-interlude/src/index.ts",
+    "code": 2345,
+    "line": 1147,
+    "column": 36,
+    "message": "Argument of type 'Session<never, never, Context> | undefined' is not assignable to parameter of type 'Session<never, never, Context>'.\n  Type 'undefined' is not assignable to type 'Session<never, never, Context>'."
+  },
+  {
+    "file": "upstream/hds-interlude/src/index.ts",
+    "code": 2345,
+    "line": 1148,
+    "column": 34,
+    "message": "Argument of type 'Session<never, never, Context> | undefined' is not assignable to parameter of type 'Session<never, never, Context>'.\n  Type 'undefined' is not assignable to type 'Session<never, never, Context>'."
+  },
+  {
+    "file": "upstream/hds-interlude/src/index.ts",
+    "code": 2345,
+    "line": 1160,
+    "column": 36,
+    "message": "Argument of type 'Session<never, never, Context> | undefined' is not assignable to parameter of type 'Session<never, never, Context>'.\n  Type 'undefined' is not assignable to type 'Session<never, never, Context>'."
+  },
+  {
+    "file": "upstream/hds-interlude/src/index.ts",
+    "code": 2345,
+    "line": 1164,
+    "column": 34,
+    "message": "Argument of type 'Session<never, never, Context> | undefined' is not assignable to parameter of type 'Session<never, never, Context>'.\n  Type 'undefined' is not assignable to type 'Session<never, never, Context>'."
+  },
+  {
+    "file": "upstream/hds-interlude/src/index.ts",
+    "code": 2345,
+    "line": 1165,
+    "column": 49,
+    "message": "Argument of type 'Session<never, never, Context> | undefined' is not assignable to parameter of type 'Session<never, never, Context>'.\n  Type 'undefined' is not assignable to type 'Session<never, never, Context>'."
+  },
+  {
+    "file": "upstream/hds-interlude/src/index.ts",
+    "code": 2345,
+    "line": 1265,
+    "column": 36,
+    "message": "Argument of type 'Session<never, never, Context> | undefined' is not assignable to parameter of type 'Session<never, never, Context>'.\n  Type 'undefined' is not assignable to type 'Session<never, never, Context>'."
+  },
+  {
+    "file": "upstream/hds-interlude/src/index.ts",
+    "code": 2345,
+    "line": 1284,
+    "column": 36,
+    "message": "Argument of type 'Session<never, never, Context> | undefined' is not assignable to parameter of type 'Session<never, never, Context>'.\n  Type 'undefined' is not assignable to type 'Session<never, never, Context>'."
+  },
+  {
+    "file": "upstream/hds-interlude/src/index.ts",
+    "code": 2345,
+    "line": 1295,
+    "column": 36,
+    "message": "Argument of type 'Session<never, never, Context> | undefined' is not assignable to parameter of type 'Session<never, never, Context>'.\n  Type 'undefined' is not assignable to type 'Session<never, never, Context>'."
+  },
+  {
+    "file": "upstream/hds-interlude/src/index.ts",
+    "code": 2345,
+    "line": 1349,
+    "column": 36,
+    "message": "Argument of type 'Session<never, never, Context> | undefined' is not assignable to parameter of type 'Session<never, never, Context>'.\n  Type 'undefined' is not assignable to type 'Session<never, never, Context>'."
+  },
+  {
+    "file": "upstream/hds-interlude/src/index.ts",
+    "code": 2345,
+    "line": 1365,
+    "column": 36,
+    "message": "Argument of type 'Session<never, never, Context> | undefined' is not assignable to parameter of type 'Session<never, never, Context>'.\n  Type 'undefined' is not assignable to type 'Session<never, never, Context>'."
+  },
+  {
+    "file": "upstream/hds-interlude/src/index.ts",
+    "code": 2345,
+    "line": 1393,
+    "column": 34,
+    "message": "Argument of type 'Session<never, never, Context> | undefined' is not assignable to parameter of type 'Session<never, never, Context>'.\n  Type 'undefined' is not assignable to type 'Session<never, never, Context>'."
+  },
+  {
+    "file": "upstream/hds-interlude/src/index.ts",
+    "code": 2345,
+    "line": 1405,
+    "column": 36,
+    "message": "Argument of type 'Session<never, never, Context> | undefined' is not assignable to parameter of type 'Session<never, never, Context>'.\n  Type 'undefined' is not assignable to type 'Session<never, never, Context>'."
+  },
+  {
+    "file": "upstream/hds-interlude/src/index.ts",
+    "code": 2345,
+    "line": 1424,
+    "column": 34,
+    "message": "Argument of type 'Session<never, never, Context> | undefined' is not assignable to parameter of type 'Session<never, never, Context>'.\n  Type 'undefined' is not assignable to type 'Session<never, never, Context>'."
+  },
+  {
+    "file": "upstream/hds-interlude/src/script/authored-actions.ts",
+    "code": 2345,
+    "line": 46,
+    "column": 38,
+    "message": "Argument of type 'string | undefined' is not assignable to parameter of type 'string'.\n  Type 'undefined' is not assignable to type 'string'."
+  },
+  {
+    "file": "upstream/hds-interlude/src/script/commit-builder.ts",
+    "code": 7023,
+    "line": 191,
+    "column": 17,
+    "message": "'bindImmediateMessageAction' implicitly has return type 'any' because it does not have a return type annotation and is referenced directly or indirectly in one of its return expressions."
+  },
+  {
+    "file": "upstream/hds-interlude/src/script/commit-builder.ts",
+    "code": 7022,
+    "line": 196,
+    "column": 11,
+    "message": "'binding' implicitly has type 'any' because it does not have a type annotation and is referenced directly or indirectly in its own initializer."
+  },
+  {
+    "file": "upstream/hds-interlude/src/script/commit-builder.ts",
+    "code": 7006,
+    "line": 197,
+    "column": 84,
+    "message": "Parameter 'span' implicitly has an 'any' type."
+  },
+  {
+    "file": "upstream/hds-interlude/src/service.ts",
+    "code": 2322,
+    "line": 1025,
+    "column": 69,
+    "message": "Type 'null' is not assignable to type 'Term<string, boolean> | undefined'."
+  },
+  {
+    "file": "upstream/hds-interlude/src/service.ts",
+    "code": 2345,
+    "line": 1067,
+    "column": 30,
+    "message": "Argument of type 'string | undefined' is not assignable to parameter of type 'string'.\n  Type 'undefined' is not assignable to type 'string'."
+  },
+  {
+    "file": "upstream/hds-interlude/src/service.ts",
+    "code": 2345,
+    "line": 1088,
+    "column": 60,
+    "message": "Argument of type 'string | undefined' is not assignable to parameter of type 'string'.\n  Type 'undefined' is not assignable to type 'string'."
+  },
+  {
+    "file": "upstream/hds-interlude/src/service.ts",
+    "code": 2345,
+    "line": 1511,
+    "column": 106,
+    "message": "Argument of type 'Date | null' is not assignable to parameter of type 'Date | undefined'.\n  Type 'null' is not assignable to type 'Date | undefined'."
+  },
+  {
+    "file": "upstream/hds-interlude/src/service.ts",
+    "code": 2345,
+    "line": 1732,
+    "column": 67,
+    "message": "Argument of type 'string | undefined' is not assignable to parameter of type 'string'.\n  Type 'undefined' is not assignable to type 'string'."
+  },
+  {
+    "file": "upstream/hds-interlude/src/service.ts",
+    "code": 2345,
+    "line": 1739,
+    "column": 73,
+    "message": "Argument of type 'string | undefined' is not assignable to parameter of type 'string'.\n  Type 'undefined' is not assignable to type 'string'."
+  },
+  {
+    "file": "upstream/hds-interlude/src/service.ts",
+    "code": 2345,
+    "line": 1816,
+    "column": 62,
+    "message": "Argument of type 'string | undefined' is not assignable to parameter of type 'string'.\n  Type 'undefined' is not assignable to type 'string'."
+  },
+  {
+    "file": "upstream/hds-interlude/src/service.ts",
+    "code": 2345,
+    "line": 1920,
+    "column": 42,
+    "message": "Argument of type 'string | undefined' is not assignable to parameter of type 'string'.\n  Type 'undefined' is not assignable to type 'string'."
+  },
+  {
+    "file": "upstream/hds-interlude/src/service.ts",
+    "code": 2345,
+    "line": 1921,
+    "column": 43,
+    "message": "Argument of type 'string | undefined' is not assignable to parameter of type 'string'.\n  Type 'undefined' is not assignable to type 'string'."
+  },
+  {
+    "file": "upstream/hds-interlude/src/service.ts",
+    "code": 2345,
+    "line": 1948,
+    "column": 71,
+    "message": "Argument of type 'string | undefined' is not assignable to parameter of type 'string'.\n  Type 'undefined' is not assignable to type 'string'."
+  },
+  {
+    "file": "upstream/hds-interlude/src/service.ts",
+    "code": 2345,
+    "line": 1955,
+    "column": 75,
+    "message": "Argument of type 'string | undefined' is not assignable to parameter of type 'string'.\n  Type 'undefined' is not assignable to type 'string'."
+  },
+  {
+    "file": "upstream/hds-interlude/src/service.ts",
+    "code": 2322,
+    "line": 1958,
+    "column": 7,
+    "message": "Type 'string | undefined' is not assignable to type 'string'.\n  Type 'undefined' is not assignable to type 'string'."
+  },
+  {
+    "file": "upstream/hds-interlude/src/service.ts",
+    "code": 2322,
+    "line": 1958,
+    "column": 31,
+    "message": "Type 'string | undefined' is not assignable to type 'string'.\n  Type 'undefined' is not assignable to type 'string'."
+  },
+  {
+    "file": "upstream/hds-interlude/src/service.ts",
+    "code": 2322,
+    "line": 1959,
+    "column": 7,
+    "message": "Type 'string | undefined' is not assignable to type 'string'.\n  Type 'undefined' is not assignable to type 'string'."
+  },
+  {
+    "file": "upstream/hds-interlude/src/service.ts",
+    "code": 2322,
+    "line": 1960,
+    "column": 7,
+    "message": "Type 'string | undefined' is not assignable to type 'string'.\n  Type 'undefined' is not assignable to type 'string'."
+  },
+  {
+    "file": "upstream/hds-interlude/src/service.ts",
+    "code": 7006,
+    "line": 2465,
+    "column": 56,
+    "message": "Parameter 'id' implicitly has an 'any' type."
+  },
+  {
+    "file": "upstream/hds-interlude/src/service.ts",
+    "code": 2322,
+    "line": 2756,
+    "column": 11,
+    "message": "Type 'BufferedGroupTurn | { storyId: string; groupId: string; rule: GroupChatRule; channelId: string | undefined; messages: never[]; revision: number; mentionedBot: false; quotedBot: false; }' is not assignable to type 'BufferedGroupTurn'.\n  Type '{ storyId: string; groupId: string; rule: GroupChatRule; channelId: string | undefined; messages: never[]; revision: number; mentionedBot: false; quotedBot: false; }' is not assignable to type 'BufferedGroupTurn'.\n    Types of property 'channelId' are incompatible.\n      Type 'string | undefined' is not assignable to type 'string'.\n        Type 'undefined' is not assignable to type 'string'."
+  },
+  {
+    "file": "upstream/hds-interlude/src/service.ts",
+    "code": 2322,
+    "line": 2761,
+    "column": 5,
+    "message": "Type 'string | undefined' is not assignable to type 'string'.\n  Type 'undefined' is not assignable to type 'string'."
+  },
+  {
+    "file": "upstream/hds-interlude/src/service.ts",
+    "code": 2532,
+    "line": 2876,
+    "column": 46,
+    "message": "Object is possibly 'undefined'."
+  },
+  {
+    "file": "upstream/hds-interlude/src/service.ts",
+    "code": 2532,
+    "line": 2877,
+    "column": 46,
+    "message": "Object is possibly 'undefined'."
+  },
+  {
+    "file": "upstream/hds-interlude/src/service.ts",
+    "code": 2345,
+    "line": 4083,
+    "column": 61,
+    "message": "Argument of type 'number | undefined' is not assignable to parameter of type 'number'.\n  Type 'undefined' is not assignable to type 'number'."
+  },
+  {
+    "file": "upstream/hds-interlude/src/service.ts",
+    "code": 2345,
+    "line": 4083,
+    "column": 95,
+    "message": "Argument of type 'number | undefined' is not assignable to parameter of type 'number'.\n  Type 'undefined' is not assignable to type 'number'."
+  },
+  {
+    "file": "upstream/hds-interlude/src/service.ts",
+    "code": 18048,
+    "line": 4111,
+    "column": 49,
+    "message": "'config.maxFileSizeMB' is possibly 'undefined'."
+  },
+  {
+    "file": "upstream/hds-interlude/src/service.ts",
+    "code": 18048,
+    "line": 4129,
+    "column": 26,
+    "message": "'config.maxFileSizeMB' is possibly 'undefined'."
+  },
+  {
+    "file": "upstream/hds-interlude/src/service.ts",
+    "code": 18048,
+    "line": 4133,
+    "column": 43,
+    "message": "'config.maxFileSizeMB' is possibly 'undefined'."
+  },
+  {
+    "file": "upstream/hds-interlude/src/service.ts",
+    "code": 18048,
+    "line": 4144,
+    "column": 60,
+    "message": "'config.maxFileSizeMB' is possibly 'undefined'."
+  },
+  {
+    "file": "upstream/hds-interlude/src/service.ts",
+    "code": 18047,
+    "line": 5667,
+    "column": 80,
+    "message": "'participant' is possibly 'null'."
+  },
+  {
+    "file": "upstream/hds-interlude/src/service.ts",
+    "code": 2532,
+    "line": 6529,
+    "column": 28,
+    "message": "Object is possibly 'undefined'."
+  },
+  {
+    "file": "upstream/hds-interlude/src/service.ts",
+    "code": 2722,
+    "line": 6529,
+    "column": 28,
+    "message": "Cannot invoke an object which is possibly 'undefined'."
+  },
+  {
+    "file": "upstream/hds-interlude/src/service.ts",
+    "code": 18047,
+    "line": 6568,
+    "column": 41,
+    "message": "'completed.emotionalOffset' is possibly 'null'."
+  },
+  {
+    "file": "upstream/hds-interlude/src/service.ts",
+    "code": 18047,
+    "line": 6568,
+    "column": 78,
+    "message": "'completed.emotionalOffset' is possibly 'null'."
+  },
+  {
+    "file": "upstream/hds-interlude/src/service.ts",
+    "code": 7006,
+    "line": 7118,
+    "column": 30,
+    "message": "Parameter 'segment' implicitly has an 'any' type."
+  },
+  {
+    "file": "upstream/hds-interlude/src/service.ts",
+    "code": 18048,
+    "line": 7811,
+    "column": 97,
+    "message": "'endpoint' is possibly 'undefined'."
+  },
+  {
+    "file": "upstream/hds-interlude/src/service.ts",
+    "code": 7006,
+    "line": 8152,
+    "column": 137,
+    "message": "Parameter 'id' implicitly has an 'any' type."
+  },
+  {
+    "file": "upstream/hds-interlude/src/service.ts",
+    "code": 7006,
+    "line": 8392,
+    "column": 16,
+    "message": "Parameter 'value' implicitly has an 'any' type."
+  },
+  {
+    "file": "upstream/hds-interlude/src/service.ts",
+    "code": 7006,
+    "line": 8393,
+    "column": 14,
+    "message": "Parameter 'left' implicitly has an 'any' type."
+  },
+  {
+    "file": "upstream/hds-interlude/src/service.ts",
+    "code": 7006,
+    "line": 8393,
+    "column": 20,
+    "message": "Parameter 'right' implicitly has an 'any' type."
+  },
+  {
+    "file": "upstream/hds-interlude/src/service.ts",
+    "code": 7006,
+    "line": 8396,
+    "column": 45,
+    "message": "Parameter 'value' implicitly has an 'any' type."
+  },
+  {
+    "file": "upstream/hds-interlude/src/service.ts",
+    "code": 2345,
+    "line": 8679,
+    "column": 73,
+    "message": "Argument of type 'string | undefined' is not assignable to parameter of type 'string'.\n  Type 'undefined' is not assignable to type 'string'."
+  },
+  {
+    "file": "upstream/hds-interlude/src/service.ts",
+    "code": 18048,
+    "line": 11027,
+    "column": 30,
+    "message": "'state.scenePresence' is possibly 'undefined'."
+  },
+  {
+    "file": "upstream/hds-interlude/src/service.ts",
+    "code": 2532,
+    "line": 13153,
+    "column": 17,
+    "message": "Object is possibly 'undefined'."
+  },
+  {
+    "file": "upstream/hds-interlude/src/service.ts",
+    "code": 2532,
+    "line": 13236,
+    "column": 17,
+    "message": "Object is possibly 'undefined'."
+  },
+  {
+    "file": "upstream/hds-interlude/src/service.ts",
+    "code": 7006,
+    "line": 13656,
+    "column": 21,
+    "message": "Parameter 'value' implicitly has an 'any' type."
+  },
+  {
+    "file": "upstream/hds-interlude/src/world-seeder.ts",
+    "code": 18048,
+    "line": 110,
+    "column": 55,
+    "message": "'slice' is possibly 'undefined'."
+  },
+  {
+    "file": "upstream/hds-interlude/src/world-seeder.ts",
+    "code": 18048,
+    "line": 110,
+    "column": 72,
+    "message": "'slice' is possibly 'undefined'."
+  }
+]
