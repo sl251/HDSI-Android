@@ -86,7 +86,7 @@ export type NativeBridge = {
   stickerImage(options: { id: string }): Promise<{ dataUri: string }>;
   syncStickerLibrary(options: { packs: { id: string; name: string; ids: string[]; pool?: 'user' | 'character' }[] }): Promise<void>;
   pruneStickers(options: { keep: string[] }): Promise<void>;
-  exportStory(): Promise<{ cancelled: boolean }>;
+  exportStory(options: { cardId: string }): Promise<{ cancelled: boolean }>;
   restoreStory(options: { cardId: string }): Promise<{ cancelled: boolean }>;
   restorePreviousStory(options: { cardId: string }): Promise<void>;
   resetStory(options: { cardId: string }): Promise<{ backup: string }>;

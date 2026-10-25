@@ -7,7 +7,7 @@ export function StoryManagement({ scope, bridge, cardId, name, native, busy, act
   const execute = async () => {
     if (confirm === 'reset') { await bridge.resetStory({ cardId }); await changed(true); notify('故事已重开，旧故事保存在本机备份。唤醒后将从当前人设开始。') }
     if (confirm === 'restore') { const result = await bridge.restoreStory({ cardId }); if (!result.cancelled) { await changed(true); notify('存档已恢复。唤醒后保持暂停，请在见闻检查后恢复故事。') } }
-    if (confirm === 'export') { const result = await bridge.exportStory(); if (!result.cancelled) { await changed(); notify('完整存档已导出；故事已休息，可随时唤醒。') } }
+    if (confirm === 'export') { const result = await bridge.exportStory({ cardId }); if (!result.cancelled) { await changed(); notify('完整存档已导出；故事已休息，可随时唤醒。') } }
     if (confirm === 'previous') { await bridge.restorePreviousStory({ cardId }); await changed(true); notify('最近本机备份已恢复，唤醒后请检查并恢复故事。') }
     setConfirm(null)
   }

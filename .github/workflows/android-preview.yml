@@ -143,7 +143,7 @@ jobs:
           if-no-files-found: error
           retention-days: 30
 
-  publish-preview-97:
+  publish-preview:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     needs: [qq-linux-arm64, build]
     runs-on: ubuntu-24.04
@@ -152,15 +152,36 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
-      - name: Publish signed Preview 9.7 as latest
+      - name: Validate release versions and notes
+        id: release
+        run: node scripts/preview-release.mjs >> "$GITHUB_OUTPUT"
+      - name: Check whether this version is already published
+        id: existing
         env:
           GH_TOKEN: ${{ github.token }}
+          HDS_TAG: ${{ steps.release.outputs.tag }}
         run: |
-          test "$(node -p "require('./package.json').version")" = "0.1.0-preview.9.7"
+          gh api --paginate "repos/$GITHUB_REPOSITORY/releases?per_page=100" --jq '.[].tag_name' > "$RUNNER_TEMP/hds-release-tags.txt"
+          if grep -Fxq "$HDS_TAG" "$RUNNER_TEMP/hds-release-tags.txt"; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+            echo "Version $HDS_TAG already exists; keeping its published assets."
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Publish signed preview as latest
+        if: steps.existing.outputs.exists != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HDS_VERSION: ${{ steps.release.outputs.version }}
+          HDS_TAG: ${{ steps.release.outputs.tag }}
+          HDS_NOTES: ${{ steps.release.outputs.notes }}
+          HDS_APK: ${{ steps.release.outputs.apk }}
+          HDS_SOURCE: ${{ steps.release.outputs.source }}
+        run: |
           gh run download "$GITHUB_RUN_ID" --repo "$GITHUB_REPOSITORY" --name "HDS-Android-preview-$GITHUB_SHA" --dir release-artifacts
-          apk=$(find release-artifacts -name 'HDS-Android-0.1.0-preview.9.7-arm64.apk' -print -quit)
-          source=$(find release-artifacts -name 'HDS-Android-0.1.0-preview.9.7-source.tar.gz' -print -quit)
+          apk=$(find release-artifacts -name "$HDS_APK" -print -quit)
+          source=$(find release-artifacts -name "$HDS_SOURCE" -print -quit)
           sums=$(find release-artifacts -name 'SHA256SUMS.txt' -print -quit)
           test -s "$apk" && test -s "$source" && test -s "$sums"
           (cd "$(dirname "$sums")" && sha256sum -c SHA256SUMS.txt)
-          gh release create v0.1.0-preview.9.7 "$apk" "$source" "$sums" --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --title 'HDSI Android 0.1.0-preview.9.7' --notes-file docs/PREVIEW9.7.md --latest
+          gh release create "$HDS_TAG" "$apk" "$source" "$sums" --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --title "HDSI Android $HDS_VERSION" --notes-file "$HDS_NOTES" --latest

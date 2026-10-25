@@ -23,6 +23,7 @@ try {
       if (method === 'rpc') {
         const p = options.payload ?? {}
         if (options.method === 'messages.history') {
+          if (fixture.failSearch && p.query === 'needle.*') throw new Error('搜索暂时失败')
           let rows = fixture.messages.filter(row => (!p.query || row.content.toLowerCase().includes(p.query.toLowerCase())) && (!p.until || row.occurredAt < p.until))
           if (p.before) rows = rows.filter(row => row.occurredAt < p.before.occurredAt || row.occurredAt === p.before.occurredAt && row.id < p.before.id)
           return { data: structuredClone(rows.slice(-(p.limit ?? 200))) }
@@ -57,6 +58,16 @@ try {
   assert.equal(await older.count(), 0)
   await page.getByRole('button', { name: '查找聊天记录', exact: true }).click()
   const dialog = page.getByRole('dialog', { name: '查找聊天记录' })
+  await dialog.getByRole('button', { name: '查找记录', exact: true }).click()
+  await dialog.getByText('已找到 50 条，可继续加载', { exact: true }).waitFor()
+  await page.evaluate(() => { fixture.failSearch = true })
+  await dialog.getByLabel('关键词').fill('needle.*')
+  await dialog.getByRole('button', { name: '查找记录', exact: true }).click()
+  await dialog.getByText('搜索暂时失败', { exact: true }).waitFor()
+  await dialog.getByRole('button', { name: '继续查找更早记录', exact: true }).click()
+  await dialog.getByText('已找到 100 条，可继续加载', { exact: true }).waitFor()
+  assert.equal(await dialog.locator('.history-results article').count(), 100, 'failed new search retains the successful query for pagination')
+  await page.evaluate(() => { fixture.failSearch = false })
   await dialog.getByLabel('关键词').fill('needle.*')
   await dialog.getByRole('button', { name: '查找记录', exact: true }).click()
   await dialog.getByText('Needle.* 一段旧回忆', { exact: true }).waitFor()

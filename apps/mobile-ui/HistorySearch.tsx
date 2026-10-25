@@ -31,13 +31,16 @@ export function HistorySearch({ bridge, close, background }: { bridge: NativeBri
     const current = ++revision.current
     setBusy(true); setError('')
     try {
+      let nextCriteria = criteria.current
       if (!older) {
         const until = date ? new Date(`${date}T00:00:00`) : undefined
         if (until) until.setDate(until.getDate() + 1)
-        criteria.current = { query: query.trim(), until: until?.toISOString() }
+        nextCriteria = { query: query.trim(), until: until?.toISOString() }
       }
-      const result = (await bridge.rpc({ method: 'messages.history', payload: { ...criteria.current, limit: historyPageSize, ...(older && rows[0] ? { before: historyCursor(rows[0]) } : {}) } })).data as Message[]
+      const result = (await bridge.rpc({ method: 'messages.history', payload: { ...nextCriteria, limit: historyPageSize, ...(older && rows[0] ? { before: historyCursor(rows[0]) } : {}) } })).data as Message[]
       if (revision.current !== current) return
+      // The cursor and criteria must describe the same successfully loaded rows.
+      criteria.current = nextCriteria
       setRows(previous => older ? [...result, ...previous] : result); setMore(result.length === historyPageSize); setSearched(true)
     } catch (failure) { if (revision.current === current) setError(failure instanceof Error ? failure.message : '历史读取失败') }
     finally { if (revision.current === current) setBusy(false) }

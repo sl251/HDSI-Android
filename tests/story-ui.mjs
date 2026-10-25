@@ -59,6 +59,7 @@ try {
         if (method === 'pickStickers') { f.importDirectory = options.directory; return f.nextStickerImport || { cancelled: true } }
         if (method === 'stickerImage') return { dataUri: window.__backgroundFixture }
         if (method === 'pruneStickers') { f.pruned = options.keep; return {} }
+        if (method === 'exportStory' && options?.cardId !== f.prefs.activeCard) throw new Error('导出必须绑定确认时的角色')
         if (method === 'pickImage') return { cancelled: false, dataUri: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/h9sAAAAASUVORK5CYII=' }
         if (method === 'pickAppearanceAsset') { f.appearance = { ...f.appearance, backgroundPath: '/data/user/0/io.hdsinterlude.android/no_backup/hds/appearance/background.jpg', backgroundRevision: (f.appearance?.backgroundRevision || 0) + 1 }; localStorage.setItem('test-native-appearance', JSON.stringify(f.appearance)); return f.appearance }
         if (['exportStory','restoreStory','resetStory','restorePreviousStory'].includes(method)) { f.status.state = 'stopped'; f.status.running = false; return { cancelled: false, backup: 'fixture-backup' } }

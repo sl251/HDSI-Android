@@ -68,29 +68,30 @@ https://github.com/user-attachments/assets/809470b8-84a5-4e32-ac78-d59d217fac7b
 
 ## 📥 下载安装
 
-**当前版本：`0.1.0-preview.9.7`**（安装包以 Latest 发布页为准）
+**当前版本：`0.1.0-preview.9.7.1`**（安装包以 Latest 发布页为准）
 
 **[➡ 前往 GitHub Releases 下载签名 APK](https://github.com/sl251/HDSI-Android/releases/latest)**
 
 - **支持设备：** Android 8.0 及以上，ARM64（arm64-v8a）。
-- **安装包：** `HDS-Android-0.1.0-preview.9.7-arm64.apk`（当前文件名沿用旧命名，不影响使用）。
-- **版本核对：** versionCode 36；可在系统「应用信息」中确认已覆盖到本版。
+- **安装包：** `HDS-Android-0.1.0-preview.9.7.1-arm64.apk`（当前文件名沿用旧命名，不影响使用）。
+- **版本核对：** versionCode 37；可在系统「应用信息」中确认已覆盖到本版。
 - **校验：** 请使用 Release 附件中的 `SHA256SUMS.txt` 核对文件完整性。
 - **空间：** 建议至少预留 1.5 GB；如果启用实验性本地 QQ 接入，额外预留约 1.6 GB。
 
 > [!IMPORTANT]
 > **从旧版本升级，请先备份完整故事 ZIP，然后直接覆盖安装，不要先卸载。** 卸载 Android App 可能清空应用私有数据，包括故事、记忆及本机配置。
 >
-> 9.7 修复**恢复暂停时仍执行媒体任务**，增加**聊天历史分页与搜索、首次对话准备和省电模式**。9.7 可以恢复旧存档，新版导出的 ZIP 需要 9.7 或兼容的新版本恢复。详情见 [Preview 9.7](docs/PREVIEW9.7.md)。
+> 9.7.1 修复**中文/emoji 传输乱码、存档原件恢复遗漏和搜索失败后的翻页条件混用**，保留 9.7 的历史分页、首次对话准备与省电模式。可以恢复旧存档，新版导出的 ZIP 需要 9.7 或兼容的新版本恢复。详情见 [Preview 9.7.1](docs/PREVIEW9.7.1.md)。
 
 ## 🗞️ 最近更新
 
+- **9.7.1**：修复中文/emoji 分块传输、存档原件恢复与回滚、导出角色绑定及搜索失败翻页；完善版本校验与发布流程。
 - **9.7**：暂停/恢复媒体保护、备份限制与真实版本清单、历史分页/搜索、可操作的首次对话准备、省电模式及运行时类型检查。
 - **9.6.3**：生图排队任务改用执行时的最新渠道配置；已提交任务沿原渠道查询或下载；明确失败不再占用冷却；重启后未知提交不重复生成。
 - **9.6.2**：支持自动 / OpenAI Images / 聊天式 / Gemini 原生四种生图协议，兼容参考图与多种响应格式；生图诊断按任务与消息关联，导出保持脱敏。
 - **9.6**：流式聊天与失败重试、拍照/相册/录音与 STT、按故事隔离的动态、自主生图与独立头像、通知与安静时段。
 
-完整条目见 [CHANGELOG](docs/CHANGELOG.md)；本次升级与验证说明见 [Preview 9.7](docs/PREVIEW9.7.md)。
+完整条目见 [CHANGELOG](docs/CHANGELOG.md)；本次升级与验证说明见 [Preview 9.7.1](docs/PREVIEW9.7.1.md)。
 
 ## 🚀 快速开始
 
@@ -138,7 +139,7 @@ Android 应用（Capacitor / Kotlin）
 
 本项目采用 **[AGPL-3.0](LICENSE)** 许可，第三方声明见 [NOTICE.md](NOTICE.md) 与 [THIRD_PARTY.md](docs/THIRD_PARTY.md)。
 
-**开发与维护文档：** [Preview 9.7 改进与兼容性](docs/PREVIEW9.7.md) · [Android 适配补丁边界](docs/MOBILE-PATCHES.md) · [完整更新历史](docs/CHANGELOG.md) · [真机测试](docs/TEST-ON-PHONE.md)
+**开发与维护文档：** [Preview 9.7.1 审查与修复](docs/PREVIEW9.7.1.md) · [Android 适配补丁边界](docs/MOBILE-PATCHES.md) · [完整更新历史](docs/CHANGELOG.md) · [真机测试](docs/TEST-ON-PHONE.md)
 
 <details>
 <summary><strong>从源码构建</strong></summary>
