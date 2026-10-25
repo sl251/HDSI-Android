@@ -411,9 +411,11 @@ export async function startHost(input: HostConfig) {
     if (request.headers.host !== `127.0.0.1:${input.port}` || request.headers.origin || auth.length !== expected.length || !timingSafeEqual(auth, expected)) { response.writeHead(401).end(JSON.stringify({ error: 'Unauthorized' })); return }
     if (request.method !== 'POST' || request.url !== '/rpc') { response.writeHead(404).end('{}'); return }
     try {
-      let body = '', bytes = 0
-      for await (const chunk of request) { bytes += chunk.length; if (bytes > 1024 * 1024) throw new Error('Request exceeds 1 MiB'); body += chunk.toString('utf8') }
-      const data = JSON.parse(body)
+      const chunks: Buffer[] = []; let bytes = 0
+      // TCP/HTTP boundaries can split a Chinese character or emoji. Decode once
+      // after collecting bounded bytes, never each transport chunk independently.
+      for await (const chunk of request) { bytes += chunk.length; if (bytes > 1024 * 1024) throw new Error('Request exceeds 1 MiB'); chunks.push(chunk) }
+      const data = JSON.parse(Buffer.concat(chunks, bytes).toString('utf8'))
       response.end(JSON.stringify({ data: await dispatch(data.method, data.payload ?? {}) }))
     } catch (error) { response.writeHead(400).end(JSON.stringify({ error: error instanceof Error ? error.message : 'Request failed' })) }
   })

@@ -115,4 +115,49 @@ class StoryArchiveTest {
             assertFalse(File(root.parentFile, "outside").exists())
         } finally { root.deleteRecursively() }
     }
+    @Test fun restoreRepairsMissingOriginalSourceAndRollbackRestoresItsPreviousState() {
+        val root = Files.createTempDirectory("hds-source-recovery").toFile()
+        try {
+            setup(root); val archive = StoryArchive(root); val output = ByteArrayOutputStream(); archive.export(id, output)
+            val source = File(root, "cards/$id.source")
+            assertTrue(source.delete())
+            var stage = archive.stage(id, ByteArrayInputStream(output.toByteArray()))
+            archive.replace(id, stage)
+            assertEquals("original card", source.readText())
+            archive.recover()
+            assertFalse("Rollback must preserve the originally missing source", source.exists())
+            stage = archive.stage(id, ByteArrayInputStream(output.toByteArray()))
+            archive.replace(id, stage); archive.commit()
+            assertEquals("original card", source.readText())
+            val reexport = ByteArrayOutputStream(); archive.export(id, reexport)
+            assertEquals("original card", File(archive.stage(id, ByteArrayInputStream(reexport.toByteArray())), "card.source").readText())
+        } finally { root.deleteRecursively() }
+    }
+    @Test fun localBackupIncludesOriginalSourceAndInterruptedRestoreCanBeRolledBackTwice() {
+        val root = Files.createTempDirectory("hds-source-backup").toFile()
+        try {
+            setup(root); val archive = StoryArchive(root); archive.replace(id); archive.commit()
+            val stage = archive.stagePrevious(id)
+            assertEquals("original card", File(stage, "card.source").readText())
+            val source = File(root, "cards/$id.source"); source.writeText("before restore")
+            archive.replace(id, stage)
+            assertEquals("original card", source.readText())
+            val journal = File(root, "story-operation.json").readText()
+            archive.recover()
+            assertEquals("before restore", source.readText())
+            File(root, "story-operation.json").writeText(journal)
+            source.writeText("partial write")
+            archive.recover()
+            assertEquals("before restore", source.readText())
+        } finally { root.deleteRecursively() }
+    }
+    @Test fun legacyLocalBackupWithoutSourceKeepsTheExistingOriginal() {
+        val root = Files.createTempDirectory("hds-legacy-source").toFile()
+        try {
+            setup(root); val archive = StoryArchive(root); val backup = archive.replace(id); archive.commit()
+            File(root, "story-backups/$id/$backup/card.source").delete()
+            val stage = archive.stagePrevious(id); archive.replace(id, stage); archive.commit()
+            assertEquals("original card", File(root, "cards/$id.source").readText())
+        } finally { root.deleteRecursively() }
+    }
 }

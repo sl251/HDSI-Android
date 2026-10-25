@@ -22,6 +22,13 @@ class StoryArchive(private val base: File, private val limits: Limits = Limits()
     }
     private fun current(id: String): File { require(id.matches(Regex("[a-f0-9]{64}"))) { "角色编号无效" }; return File(base, "profiles/$id") }
     private fun card(id: String) = File(base, "cards/$id.json")
+    private fun source(id: String) = File(base, "cards/$id.source")
+    private fun writeSource(id: String, from: File) {
+        require(from.isFile && !Files.isSymbolicLink(from.toPath())) { "角色卡原件不存在或包含链接" }
+        val temporary = File(base, "cards/$id.source.restore.tmp")
+        temporary.outputStream().use { stream -> from.inputStream().use { it.copyTo(stream) }; stream.fd.sync() }
+        Files.move(temporary.toPath(), source(id).toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING, java.nio.file.StandardCopyOption.ATOMIC_MOVE)
+    }
     private fun writeCard(id: String, bytes: ByteArray) {
         val temporary = File(base, "cards/$id.restore.tmp")
         temporary.outputStream().use { stream -> stream.write(bytes); stream.fd.sync() }
@@ -112,6 +119,12 @@ class StoryArchive(private val base: File, private val limits: Limits = Limits()
             File(previous, "profile").walkTopDown().forEach { require(!Files.isSymbolicLink(it.toPath())) { "备份包含无效链接" } }
             require(File(previous, "profile").copyRecursively(File(stage, "profile"))) { "复制备份失败" }
             File(previous, "card.json").copyTo(File(stage, "card.json"))
+            // Legacy local backups did not contain the immutable original card.
+            val original = File(previous, "card.source")
+            if (original.exists()) {
+                require(original.isFile && !Files.isSymbolicLink(original.toPath())) { "备份角色卡原件无效" }
+                original.copyTo(File(stage, "card.source"))
+            }
             return stage
         } catch (error: Throwable) { stage.deleteRecursively(); throw error }
     }
@@ -120,13 +133,17 @@ class StoryArchive(private val base: File, private val limits: Limits = Limits()
         val profile = current(id).apply { mkdirs() }
         val operation = UUID.randomUUID().toString(); val backup = File(base, "story-backups/$id/$operation").apply { mkdirs() }
         val savedCard = card(id).readText(); File(backup, "card.json").writeText(savedCard)
-        val record = JSONObject().put("cardId", id).put("operation", operation).put("phase", "prepared").put("oldCard", savedCard)
+        val original = source(id)
+        require(!Files.isSymbolicLink(original.toPath()) && (!original.exists() || original.isFile)) { "角色卡原件无效" }
+        if (original.isFile) File(backup, "card.source").outputStream().use { out -> original.inputStream().use { it.copyTo(out) }; out.fd.sync() }
+        val record = JSONObject().put("cardId", id).put("operation", operation).put("phase", "prepared").put("oldCard", savedCard).put("sourcePresent", original.isFile)
         writeJournal(record)
         try {
             require(profile.renameTo(File(backup, "profile"))) { "无法备份原故事" }
             if (stage != null) {
                 require(File(stage, "profile").renameTo(profile)) { "无法安装恢复的故事" }
                 writeCard(id, File(stage, "card.json").readBytes())
+                File(stage, "card.source").takeIf { it.exists() }?.let { writeSource(id, it) }
             } else {
                 profile.mkdirs(); File(backup, "profile/qq-policy.json").takeIf { it.isFile }?.copyTo(File(profile, "qq-policy.json"))
             }
@@ -147,6 +164,11 @@ class StoryArchive(private val base: File, private val limits: Limits = Limits()
         // Repeating recovery after the profile was already moved back still restores
         // the card atomically; a process kill cannot leave half-written card JSON.
         writeCard(id, record.getString("oldCard").toByteArray())
+        // Old journals predate source replacement; leave their original untouched.
+        if (record.has("sourcePresent")) {
+            if (record.getBoolean("sourcePresent")) writeSource(id, File(base, "story-backups/$id/$operation/card.source"))
+            else require(!source(id).exists() || source(id).delete()) { "无法恢复角色卡原件状态" }
+        }
         require(journal.delete()) { "无法清理恢复清单" }
     }
 }

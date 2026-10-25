@@ -188,7 +188,7 @@ class HdsRuntimePlugin : Plugin() {
         if (call == null) return
         if (result.resultCode != Activity.RESULT_OK || result.data?.data == null) { resolve(call, JSONObject().put("cancelled", true)); return }
         run(call) {
-            val id = runtime().store.publicSettings().getString("activeCard")
+            val id = call.getString("cardId") ?: throw IllegalArgumentException("缺少角色编号")
             runtime().maintainStory(id) {
                 StoryArchive(runtime().store.base).exportTo(id) { context.contentResolver.openOutputStream(result.data!!.data!!, "wt") ?: throw IllegalArgumentException("无法写入存档") }
             }
