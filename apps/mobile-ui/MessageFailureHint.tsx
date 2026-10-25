@@ -23,7 +23,7 @@ export function useMessageActivity(bridge: NativeBridge, healthy: boolean, cardI
       } catch { if (alive) setSnapshot(previous => ({ ...previous, events: [] })) }
       finally { running = false }
     }
-    void read(); const timer = setInterval(() => void read(), 1000)
+    void read(); const timer = setInterval(() => { if (!document.hidden) void read() }, 1000)
     return () => { alive = false; clearInterval(timer) }
   }, [bridge, healthy, cardId, deadlineMs])
   return healthy && snapshot.cardId === cardId ? { failures: snapshot.failures, typing: now - snapshot.readAt < 5000 && characterIsTyping(snapshot.events, now, deadlineMs) } : { failures: undefined, typing: false }

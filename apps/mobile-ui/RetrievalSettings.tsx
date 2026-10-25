@@ -11,7 +11,7 @@ export function RetrievalSettings({ settings, setSettings, bridge, native, healt
   const mobileConfig = settings.mobileConfig ?? {}, fingerprint = JSON.stringify({ providers: settings.providers, mobileConfig })
   useEffect(() => { if (!native || !healthy) { setActive(null); return }; let alive = true
     const poll = () => bridge.rpc({ method: 'config.status' }).then(result => { if (alive) setActive(result.data) }).catch(() => {})
-    void poll(); const timer = setInterval(() => void poll(), 5000)
+    void poll(); const timer = setInterval(() => { if (!document.hidden) void poll() }, 5000)
     return () => { alive = false; clearInterval(timer) }
   }, [native, healthy, bridge, fingerprint])
   const update = (task: string, key: string, value: unknown) => setSettings(previous => ({ ...previous, mobileConfig: { ...previous.mobileConfig, sections: { ...previous.mobileConfig?.sections, [task]: { ...previous.mobileConfig?.sections?.[task], [key]: value } } } }))

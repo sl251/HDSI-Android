@@ -1,11 +1,12 @@
 {
   "name": "hds-android",
-  "version": "0.1.0-preview.9.6.3",
+  "version": "0.1.0-preview.9.7",
   "private": true,
   "type": "module",
   "scripts": {
     "dev": "vite --host 127.0.0.1",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc --noEmit && npm run typecheck:runtime",
+    "typecheck:runtime": "node scripts/typecheck-runtime.mjs",
     "build": "npm run typecheck && vite build",
     "build:host": "node scripts/build-mobile-host.mjs",
     "test": "npm run build:host && node --import tsx --test --test-concurrency=1 tests/*.test.ts",
@@ -30,6 +31,7 @@
   "devDependencies": {
     "@capacitor/cli": "7.6.9",
     "@types/node": "22.10.5",
+    "@types/qrcode": "1.5.6",
     "@types/react": "18.3.18",
     "@types/react-dom": "18.3.5",
     "@vitejs/plugin-react": "4.3.4",

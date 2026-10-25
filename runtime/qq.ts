@@ -190,7 +190,7 @@ export class QQRuntime {
     })
     this.timer = setInterval(() => void this.poll(), 2000)
   }
-  private bot() { return this.app.bots.find(bot => bot.platform === 'onebot' && bot.selfId === this.account) as OneBotBot | undefined }
+  private bot() { return this.app.bots.find(bot => bot.platform === 'onebot' && bot.selfId === this.account) as OneBotBot<Context> | undefined }
   private async applyPolicy() {
     Object.assign(this.config.onebot, { enabled: true, ignoreSelfMessages: true,
       botAccounts: this.policy.enabled && this.account ? [{ qq: this.account, enabled: true }] : [],
@@ -205,10 +205,11 @@ export class QQRuntime {
   private inboxFile() { if (!/^[1-9]\d{4,14}$/.test(this.account)) throw new Error('QQ 账号尚未就绪'); return join(this.directory, `inbox-${this.account}.json`) }
   private saveInbox() { atomic(this.inboxFile(), this.inbox) }
   private record(session: Session, outgoing: boolean) {
+    if (!outgoing && !session.userId) return
     const conversation = session.isDirect || session.channelId?.startsWith('private:') ? `private:${session.channelId?.replace(/^private:/, '') || session.userId}` : `group:${session.guildId || session.channelId}`
     const id = `${this.account}:${session.messageId}`
     if (!session.messageId || this.inbox.messages.some(message => message.id === id)) return
-    this.inbox.messages.push({ id, conversation, sender: outgoing ? this.account : session.userId, name: outgoing ? this.nickname : session.username || session.userId, content: plainMessage(session.content || ''), time: session.timestamp || Date.now(), outgoing })
+    this.inbox.messages.push({ id, conversation, sender: outgoing ? this.account : session.userId!, name: outgoing ? this.nickname : session.username || session.userId!, content: plainMessage(session.content || ''), time: session.timestamp || Date.now(), outgoing })
     this.inbox.messages = this.inbox.messages.slice(-2000); this.saveInbox()
   }
   private diagnostic(text: string) {
@@ -471,7 +472,7 @@ export class QQRuntime {
     }
     if (this.closing || generation !== this.generation) return
     if (displayFailure || display.exitCode !== null) throw new Error(displayFailure || `Xvfb 退出：${display.exitCode}`)
-    const environment = { ...process.env,
+    const environment: NodeJS.ProcessEnv = { ...process.env,
       DISPLAY: `:${displayNumber}`, XAUTHORITY: authority, NAPCAT_MAIN_PATH: join(root, 'napcat/napcat.mjs'),
       HOME: join(this.directory, 'home'), XDG_CONFIG_HOME: join(this.directory, 'home/.config'), NAPCAT_WORKDIR: this.directory,
       NAPCAT_WRAPPER_PATH: join(qq, 'wrapper.node'), NAPCAT_QQ_PACKAGE_INFO_PATH: join(qq, 'package.json'),

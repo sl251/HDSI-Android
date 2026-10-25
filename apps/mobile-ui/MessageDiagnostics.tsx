@@ -35,7 +35,7 @@ export function MessageDiagnostics({ bridge, healthy, messageId, messages = [], 
       finally { running = false; if (alive) setLoading(false) }
     }
     setLoading(true); setEvents([]); void read()
-    const timer = setInterval(() => void read(), 3000)
+    const timer = setInterval(() => { if (!document.hidden) void read() }, 3000)
     return () => { alive = false; clearInterval(timer) }
   }, [bridge, healthy, scope, revision])
   const background = events.filter(event => !event.requestIds.length && ['embedding', 'rerank'].includes(event.stage) && (view !== 'failed' || event.outcome === 'fallback'))

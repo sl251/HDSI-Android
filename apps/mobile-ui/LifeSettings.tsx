@@ -46,7 +46,7 @@ export function LifeSettings({ value = {}, change, bridge, healthy, native, noti
     if (!healthy || !native) { setBudget(null); return }
     let cancelled = false
     const poll = () => bridge.rpc({ method: 'config.status' }).then(result => { if (!cancelled) setBudget((result.data as { budget: Budget }).budget ?? null) }).catch(() => {})
-    void poll(); const timer = setInterval(() => void poll(), 10000)
+    void poll(); const timer = setInterval(() => { if (!document.hidden) void poll() }, 10000)
     return () => { cancelled = true; clearInterval(timer) }
   }, [healthy, native])
   const update = (section: string, key: string, item: unknown) => change({ ...value, sections: { ...value.sections, [section]: { ...value.sections?.[section], [key]: item } } })

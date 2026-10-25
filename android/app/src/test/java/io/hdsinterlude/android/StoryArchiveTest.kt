@@ -9,6 +9,7 @@ import java.io.File
 import java.nio.file.Files
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
+import java.util.zip.ZipInputStream
 
 class StoryArchiveTest {
     private val id = "a".repeat(64)
@@ -27,8 +28,48 @@ class StoryArchiveTest {
         try {
             setup(root); val archive = StoryArchive(root); val output = ByteArrayOutputStream(); archive.export(id, output)
             val stage = archive.stage(id, ByteArrayInputStream(output.toByteArray()))
+            val manifest = JSONObject(File(stage, "manifest.json").readText())
+            assertEquals(2, manifest.getInt("format")); assertEquals(1, manifest.getInt("dataSchema"))
+            assertEquals(BuildConfig.VERSION_NAME, manifest.getString("app")); assertEquals(BuildConfig.HDS_VERSION, manifest.getString("hds"))
             assertArrayEquals(byteArrayOf(1, 2, 3), File(stage, "profile/images/example.jpg").readBytes())
             assertThrows(IllegalArgumentException::class.java) { archive.stage("b".repeat(64), ByteArrayInputStream(output.toByteArray())) }
+        } finally { root.deleteRecursively() }
+    }
+    private fun rewriteManifest(bytes: ByteArray, change: (JSONObject) -> Unit): ByteArray {
+        val output = ByteArrayOutputStream()
+        ZipInputStream(ByteArrayInputStream(bytes)).use { input -> ZipOutputStream(output).use { zip ->
+            while (true) {
+                val entry = input.nextEntry ?: break; var content = input.readBytes()
+                if (entry.name == "manifest.json") { val manifest = JSONObject(String(content, Charsets.UTF_8)); change(manifest); content = manifest.toString().toByteArray() }
+                zip.putNextEntry(ZipEntry(entry.name)); zip.write(content); zip.closeEntry()
+            }
+        } }
+        return output.toByteArray()
+    }
+    @Test fun legacyArchivesRemainReadableAndUnknownSchemasAreRejected() {
+        val root = Files.createTempDirectory("hds-archive-version").toFile()
+        try {
+            setup(root); val archive = StoryArchive(root); val output = ByteArrayOutputStream(); archive.export(id, output)
+            val legacy = rewriteManifest(output.toByteArray()) { it.put("format", 1).put("hds", "1.0.1-rc51").put("app", "0.1.0-preview.7.1").remove("dataSchema") }
+            assertTrue(File(archive.stage(id, ByteArrayInputStream(legacy)), "profile/hds.sqlite").isFile)
+            for (change in listOf<(JSONObject) -> Unit>({ it.put("dataSchema", 99) }, { it.put("hds", "future-engine") }, { it.put("format", 99) })) {
+                assertThrows(IllegalArgumentException::class.java) { archive.stage(id, ByteArrayInputStream(rewriteManifest(output.toByteArray(), change))) }
+            }
+        } finally { root.deleteRecursively() }
+    }
+    @Test fun exportPreflightUsesImportLimitsAndNeverOpensRejectedDestination() {
+        val root = Files.createTempDirectory("hds-archive-limits").toFile()
+        try {
+            setup(root); val output = ByteArrayOutputStream(); StoryArchive(root).export(id, output)
+            for (limits in listOf(StoryArchive.Limits(fileBytes = 64), StoryArchive.Limits(totalBytes = 128), StoryArchive.Limits(entries = 5), StoryArchive.Limits(manifestBytes = 32))) {
+                val archive = StoryArchive(root, limits); var opened = false
+                assertThrows(IllegalArgumentException::class.java) { archive.exportTo(id) { opened = true; ByteArrayOutputStream() } }
+                assertFalse("Rejected archive must not truncate destination", opened)
+                assertThrows(IllegalArgumentException::class.java) { archive.stage(id, ByteArrayInputStream(output.toByteArray())) }
+            }
+            val limits = StoryArchive.Limits(fileBytes = 4096, totalBytes = 8192, entries = 6, manifestBytes = 4096)
+            val bounded = StoryArchive(root, limits); val valid = ByteArrayOutputStream(); bounded.export(id, valid)
+            assertTrue(File(bounded.stage(id, ByteArrayInputStream(valid.toByteArray())), "profile/hds.sqlite").isFile)
         } finally { root.deleteRecursively() }
     }
     @Test fun resetAndCrashRecoveryRestoreOriginalProfile() {

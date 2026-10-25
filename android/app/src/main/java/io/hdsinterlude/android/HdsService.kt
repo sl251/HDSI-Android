@@ -18,9 +18,14 @@ class HdsService : Service() {
             active?.intentionalStop = true
             context.stopService(Intent(context, HdsService::class.java))
         }
+        @JvmStatic fun refreshPowerPolicy() { active?.let { service -> service.handler.post { service.updateWakeLock() } } }
+        @JvmStatic fun noteActivity() { active?.let { service -> service.handler.post {
+            service.wakePolicy.activity(android.os.SystemClock.elapsedRealtime()); service.updateWakeLock()
+        } } }
     }
     @Volatile private var intentionalStop = false
     private var wakeLock: PowerManager.WakeLock? = null
+    private val wakePolicy = WakePolicy()
     private val messageIo = java.util.concurrent.Executors.newSingleThreadExecutor()
     private lateinit var messages: CharacterNotifications
     private val push: (String, String, CharacterMessage, Boolean) -> Unit = { id, name, message, foreground ->
@@ -69,7 +74,12 @@ class HdsService : Service() {
             }
         }
     } }
-    private val renew = object : Runnable { override fun run() { wakeLock?.acquire(10 * 60 * 1000L); handler.postDelayed(this, 9 * 60 * 1000L) } }
+    private fun updateWakeLock() {
+        if (active !== this || intentionalStop) return
+        val timeout = wakePolicy.timeout(RuntimePower(this).mode(), AppVisibility.visible, android.os.SystemClock.elapsedRealtime())
+        wakeLock?.let { lock -> if (timeout > 0) lock.acquire(timeout) else if (lock.isHeld) lock.release() }
+    }
+    private val renew = object : Runnable { override fun run() { updateWakeLock(); handler.postDelayed(this, 60_000L) } }
     override fun onCreate() {
         super.onCreate()
         active = this
@@ -77,6 +87,7 @@ class HdsService : Service() {
         messages.createChannel()
         HdsRuntime.get(this).messagePush = push
         wakeLock = getSystemService(PowerManager::class.java).newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "HDS:runtime").apply { setReferenceCounted(false) }
+        wakePolicy.activity(android.os.SystemClock.elapsedRealtime())
         renew.run()
         val manager = getSystemService(NotificationManager::class.java)
         manager.createNotificationChannel(NotificationChannel("hds-runtime", "HDS 本地运行", NotificationManager.IMPORTANCE_LOW))

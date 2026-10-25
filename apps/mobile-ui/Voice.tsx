@@ -11,7 +11,7 @@ export function useVoices(bridge: NativeBridge, native: boolean) {
     if (!native) return
     let alive = true
     const read = () => { const expected = revision.current; return bridge.voiceState().then(value => { if (alive && revision.current === expected) accept(value) }).catch(() => {}) }
-    void read(); const timer = setInterval(() => void read(), 5000)
+    void read(); const timer = setInterval(() => { if (!document.hidden) void read() }, 5000)
     return () => { alive = false; clearInterval(timer) }
   }, [native, bridge])
   return { state, accept }

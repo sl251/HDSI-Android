@@ -55,6 +55,9 @@ export type QQConversation = { id: string; name: string; last: string; time: num
 export type QQMessage = { id: string; conversation: string; sender: string; name: string; content: string; time: number; outgoing: boolean }
 export type MessageNotificationSettings = { enabled: boolean; permission: 'prompt' | 'granted' | 'denied'; available: boolean; mode?: 'popup' | 'normal' | 'silent'; preview?: boolean; foreground?: boolean; quietEnabled?: boolean; quietStart?: number; quietEnd?: number }
 export type NativeBridge = {
+  powerSettings?(): Promise<{ mode: 'continuous' | 'balanced' }>;
+  savePowerSettings?(options: { mode: 'continuous' | 'balanced' }): Promise<{ mode: 'continuous' | 'balanced' }>;
+  addListener?(event: 'messageReceived', listener: (value: { cardId: string }) => void): Promise<{ remove(): Promise<void> }>;
   addListener?(event: 'replyStream', listener: (value: { cardId: string; id: string; content?: string; status: string; sourceIds: string[]; occurredAt: string; delivered?: boolean }) => void): Promise<{ remove(): Promise<void> }>;
   experienceSettings(): Promise<ExperienceSettings>;
   saveExperience(options: ExperienceSettings & { cardId: string }): Promise<ExperienceSettings>;

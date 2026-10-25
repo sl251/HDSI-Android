@@ -1,6 +1,6 @@
 {
   "format": 1,
-  "version": "0.1.0-preview.9.6.3",
+  "version": "0.1.0-preview.9.7",
   "abi": "arm64-v8a",
   "ubuntu": {
     "url": "https://cdimage.ubuntu.com/ubuntu-base/releases/24.04/release/ubuntu-base-24.04.3-base-arm64.tar.gz",
