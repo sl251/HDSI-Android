@@ -14,7 +14,7 @@ export function useAppearance(bridge: NativeBridge, native: boolean, notify: (te
     const root = document.documentElement
     root.dataset.theme = value.theme
     root.dataset.palette = value.palette || 'sky'
-    root.style.setProperty('--ui-font', value.font === 'custom' && value.fontData ? 'HdsCustom' : value.font === 'serif' ? '"Noto Serif CJK SC",serif' : value.font === 'sans' ? 'sans-serif' : '-apple-system,BlinkMacSystemFont,"Segoe UI","Microsoft YaHei",sans-serif')
+    root.style.setProperty('--ui-font', value.font === 'custom' && value.fontData ? 'HdsCustom' : value.font === 'serif' ? '"Noto Serif CJK SC",serif' : value.font === 'sans' ? 'sans-serif' : '-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Noto Sans CJK SC","Segoe UI",sans-serif')
     root.style.setProperty('--font-scale', String(value.fontSize / 14))
     root.style.setProperty('--panel-alpha', String(value.panelOpacity / 100))
     let font: FontFace | undefined, cancelled = false
