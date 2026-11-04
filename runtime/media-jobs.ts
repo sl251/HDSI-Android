@@ -1,15 +1,16 @@
-import { readFileSync } from 'node:fs'
+import { readFileSync, writeFileSync, renameSync, unlinkSync, existsSync } from 'node:fs'
+import { createHash } from 'node:crypto'
 import { join } from 'node:path'
 import { atomicState } from './atomic-state'
 import { imagePrompt } from './experience-config'
-import { boundedResponse, imageResult, imageResponse, imageSize, imageApi, geminiImageEndpoint, mediaJson, MediaError, mediaFailure } from './image-provider'
+import { boundedResponse, downloadImage, imageResponseLimit, imageResult, imageResponse, imageSize, imageApi, geminiImageEndpoint, mediaJson, MediaError, mediaFailure } from './image-provider'
 import { currentDiagnosticIds, type MessageDiagnostics } from './message-diagnostics'
 import type { ExperienceSettings, MediaConnection, MediaJob } from '../packages/contracts/experience'
 export { boundedResponse, imageResult } from './image-provider'
 
-type Job = MediaJob & { route?: Omit<MediaConnection, 'apiKey'>; references?: string[]; ratio?: string; submission?: boolean; requestIds?: string[] }
+type Job = MediaJob & { route?: Omit<MediaConnection, 'apiKey'>; references?: string[]; ratio?: string; submission?: boolean; requestIds?: string[]; cachedResult?: boolean }
 const refused = (status: number) => [400, 401, 402, 403, 404, 405, 413, 415, 422, 429].includes(status)
-const hasRemoteResult = (job: Job) => job.kind === 'image' && !!(job.providerTaskId || job.imageUrl)
+const hasRemoteResult = (job: Job) => job.kind === 'image' && !!(job.providerTaskId || job.imageUrl || job.cachedResult)
 const uncertainSubmission = (job: Job) => !!job.submission && !hasRemoteResult(job) && !job.imageId && job.status !== 'ready'
 export function mediaEndpoint(base: string, suffix: string) {
   const url = new URL(base)
@@ -20,6 +21,9 @@ export function mediaEndpoint(base: string, suffix: string) {
 export function mediaJobs(options: { directory: string; identity?: string; paused?: boolean; audioDirectory?: string; diagnostics?: MessageDiagnostics; config: () => ExperienceSettings; getImage: (id: string) => string; saveImage: (bytes: Buffer) => { id: string }; delivered: (job: MediaJob) => Promise<void>; fetch?: typeof fetch }) {
   const db = atomicState<{ jobs: Job[] }>(join(options.directory, 'media-jobs.json'), () => ({ jobs: [] }))
   const request = options.fetch ?? fetch
+  const resultPath = (id: string) => join(options.directory, `media-result-${createHash('sha256').update(id).digest('hex')}.bin`)
+  // Recover a result cached just before process termination, even if its state write was interrupted.
+  db.change(s => { for (const job of s.jobs) if (job.kind === 'image' && !job.imageId && existsSync(resultPath(job.id))) job.cachedResult = true })
   let stopped = false
   let paused = options.paused === true
   const active = new Map<string, AbortController>()
@@ -38,13 +42,17 @@ export function mediaJobs(options: { directory: string; identity?: string; pause
     } catch { /* Diagnostics must not fail a media task. */ }
   }
   db.change(s => { for (const job of s.jobs) if (['queued', 'running', 'submitted'].includes(job.status)) job.status = hasRemoteResult(job) ? 'submitted' : uncertainSubmission(job) ? 'unknown' : 'queued' })
-  const publicJob = ({ route, references, ratio, submission, requestIds, ...job }: Job): MediaJob => job
+  const publicJob = ({ route, references, ratio, submission, requestIds, cachedResult, ...job }: Job): MediaJob => ({ ...job, provider: route?.provider,
+    retryMode: job.delivered || ['queued', 'running', 'submitted', 'cancelled'].includes(job.status) ? 'none'
+      : job.imageId || job.status === 'ready' ? 'deliver'
+      : cachedResult || job.imageUrl || job.providerTaskId && route?.provider === 'imagefree' ? 'retrieve'
+      : job.status === 'unknown' || submission || job.providerTaskId ? 'none' : 'generate' })
   const deliver = async (job: Job, epoch = options.diagnostics?.epoch) => {
     if (stopped || paused) return
     const started = Date.now()
     record(job, 'started', 'deliver', undefined, undefined, epoch)
-    try { await options.delivered(publicJob(job)); update(job.id, { delivered: true, error: undefined }); record(job, 'succeeded', 'deliver', undefined, started, epoch) }
-    catch { const error = new MediaError('image_delivery'); update(job.id, { error: paused || interrupted.has(job.id) ? undefined : error.message }); record(job, 'failed', 'deliver', error, started, epoch) }
+    try { await options.delivered(publicJob(job)); update(job.id, { delivered: true, error: undefined, reason: undefined, phase: 'deliver' }); record(job, 'succeeded', 'deliver', undefined, started, epoch) }
+    catch { const error = new MediaError('image_delivery'); update(job.id, { error: paused || interrupted.has(job.id) ? undefined : error.message, reason: error.reason, phase: 'deliver' }); record(job, 'failed', 'deliver', error, started, epoch) }
   }
   const run = async (initial: Job) => {
     if (stopped || paused || active.has(initial.id)) return
@@ -56,7 +64,7 @@ export function mediaJobs(options: { directory: string; identity?: string; pause
     const signal = AbortSignal.any([controller.signal, AbortSignal.timeout(current.provider === 'imagefree' ? 900000 : 240000)])
     const started = Date.now(), epoch = options.diagnostics?.epoch
     let phase = 'prepare', job = initial
-    const progress = (next: string) => { phase = next; record(job, 'started', phase, undefined, undefined, epoch) }
+    const progress = (next: string) => { phase = next; update(job.id, { phase: next }); record(job, 'started', phase, undefined, undefined, epoch) }
     try {
       // Bind unsent work at execution time: saving settings between enqueue and execution is safe.
       if (!resuming && !initial.submission) {
@@ -66,7 +74,7 @@ export function mediaJobs(options: { directory: string; identity?: string; pause
       progress('prepare')
       if (uncertainSubmission(initial)) throw new MediaError('media_submission_unknown')
       if (!resuming && !current.enabled) throw new MediaError('media_disabled')
-      job = update(initial.id, { status: 'running', error: undefined })
+      job = update(initial.id, { status: 'running', error: undefined, reason: undefined })
       const apiKey = !resuming ? configured.apiKey : undefined
       const headers: Record<string, string> = apiKey ? { Authorization: `Bearer ${apiKey}` } : {}
       if (job.kind === 'stt') {
@@ -82,8 +90,8 @@ export function mediaJobs(options: { directory: string; identity?: string; pause
         if (typeof data.text !== 'string' || !data.text.trim() || data.text.length > 12000) throw new Error('未识别到有效文字')
         job = update(job.id, { text: data.text.trim(), status: 'ready', submission: false })
       } else {
-        let result: ReturnType<typeof imageResult> = { taskId: job.providerTaskId, url: job.imageUrl }
-        if (!result.taskId && !result.url) {
+        let result: ReturnType<typeof imageResult> = job.cachedResult ? { bytes: readFileSync(resultPath(job.id)) } : { taskId: job.providerTaskId, url: job.imageUrl }
+        if (!result.bytes && !result.taskId && !result.url) {
           let body: FormData | string, endpoint: string, contentHeaders: Record<string, string> = {}
           const api = current.provider === 'imagefree' ? 'imagefree' : imageApi(current)
           if (api === 'imagefree') {
@@ -115,7 +123,7 @@ export function mediaJobs(options: { directory: string; identity?: string; pause
           const response = await request(endpoint, { method: 'POST', headers: { ...headers, ...contentHeaders }, body, signal, redirect: 'error' })
           // Explicit server refusal is safe to retry after configuration is fixed.
           if (refused(response.status)) update(job.id, { submission: false })
-          const bytes = await boundedResponse(response)
+          const bytes = await boundedResponse(response, imageResponseLimit)
           const parsed = imageResponse(bytes, response.headers.get('content-type') ?? '')
           result = parsed
           if (!result.taskId && !result.url && !result.bytes && !result.failed) {
@@ -130,7 +138,7 @@ export function mediaJobs(options: { directory: string; identity?: string; pause
         while (result.taskId && !result.bytes && !result.url && !result.failed) {
           if (current.provider !== 'imagefree') throw new MediaError('image_async')
           await new Promise<void>((resolve, reject) => { const abort = () => { clearTimeout(timer); reject(new Error('任务等待中断')) }; const timer = setTimeout(() => { signal.removeEventListener('abort', abort); resolve() }, 3000); if (signal.aborted) abort(); else signal.addEventListener('abort', abort, { once: true }) })
-          const data = mediaJson(await boundedResponse(await request(`https://imagefree.net/api/generate/status?taskId=${encodeURIComponent(result.taskId)}`, { signal, redirect: 'error' })))
+          const data = mediaJson(await boundedResponse(await request(`https://imagefree.net/api/generate/status?taskId=${encodeURIComponent(result.taskId)}`, { signal, redirect: 'error' }), imageResponseLimit))
           const next = imageResult(data)
           if (['completed', 'succeeded'].includes(data?.status) && !next.bytes && !next.url && !next.failed) throw new MediaError('image_empty')
           result = { taskId: result.taskId, ...next }
@@ -138,25 +146,31 @@ export function mediaJobs(options: { directory: string; identity?: string; pause
         if (result.failed) { update(job.id, { submission: false, providerTaskId: undefined, imageUrl: undefined }); throw new MediaError(result.reason === 'unknown_error' || !result.reason ? 'provider_error' : result.reason) }
         if (result.url) {
           progress('download')
-          const url = new URL(result.url)
-          if (url.protocol !== 'https:' || url.username || url.password || /^(localhost|127\.|10\.|192\.168\.|169\.254\.|\[|172\.(1[6-9]|2\d|3[01])\.)/.test(url.hostname)) throw new MediaError('image_download')
           update(job.id, { imageUrl: result.url })
-          result.bytes = await boundedResponse(await request(result.url, { signal, redirect: 'error' }))
+          result.bytes = await downloadImage(result.url, request, signal)
         }
         if (!result.bytes) throw new MediaError('image_empty')
         progress('save')
         let asset: { id: string }
-        try { asset = options.saveImage(result.bytes) } catch { throw new MediaError('image_save') }
-        job = update(job.id, { imageId: asset.id, status: 'ready', submission: false })
+        try {
+          if (!job.cachedResult) {
+            writeFileSync(resultPath(job.id) + '.tmp', result.bytes, { mode: 0o600 })
+            renameSync(resultPath(job.id) + '.tmp', resultPath(job.id))
+            job = update(job.id, { cachedResult: true, submission: false })
+          }
+          asset = options.saveImage(result.bytes)
+        } catch { throw new MediaError('image_save') }
+        job = update(job.id, { imageId: asset.id, status: 'ready', submission: false, cachedResult: false })
+        try { unlinkSync(resultPath(job.id)) } catch { /* Saved asset is already durable. */ }
         record(job, 'succeeded', phase, undefined, started, epoch)
       }
       if (!stopped && !paused && !job.delivered) await deliver(job, epoch)
     } catch (error) {
       const job = db.read().jobs.find(j => j.id === initial.id)!
       const failure = signal.aborted ? new MediaError('timeout') : mediaFailure(error)
-      const unknown = job.submission && !job.providerTaskId && !job.imageUrl
+      const unknown = uncertainSubmission(job)
       const held = paused || interrupted.has(job.id)
-      update(job.id, { status: unknown ? 'unknown' : held ? hasRemoteResult(job) ? 'submitted' : job.imageId || job.text ? 'ready' : 'queued' : 'failed', error: held && !unknown ? undefined : `${failure.message}${unknown ? ' 提交结果待确认，请勿重复生成；先在服务端核实。' : ''}` })
+      update(job.id, { status: unknown ? 'unknown' : held ? hasRemoteResult(job) ? 'submitted' : job.imageId || job.text ? 'ready' : 'queued' : 'failed', reason: failure.reason, phase, error: held && !unknown ? undefined : `${failure.message}${unknown ? ' 提交结果待确认，请勿重复生成；先在服务端核实。' : ''}` })
       record(job, 'failed', phase, failure, started, epoch)
     } finally { active.delete(initial.id); interrupted.delete(initial.id) }
   }
@@ -179,6 +193,24 @@ export function mediaJobs(options: { directory: string; identity?: string; pause
       return !!last && last.status === 'failed' && !last.submission && !hasRemoteResult(last) && !last.imageId
     },
     skipped(input: { id: string; purpose: MediaJob['purpose']; entryId: number }, reason: string) { record({ ...input, kind: 'image', requestIds: ids(input.entryId) }, 'skipped', 'prepare', new MediaError(reason)) },
+    freeInput(id: string) {
+      const job = db.read().jobs.find(j => j.id === id)
+      if (!job || job.kind !== 'image' || job.route?.provider !== 'imagefree') throw new Error('这不是免费生图任务')
+      if (job.delivered || job.imageId) return { completed: true }
+      if (stopped || paused) throw new Error('请先恢复当前故事')
+      if (job.status !== 'failed' || active.has(id) || job.submission || hasRemoteResult(job)) throw new Error('原任务仍在处理或结果待确认，请先查看原任务结果')
+      return { prompt: job.prompt, completed: false }
+    },
+    completeFree(id: string, imageId: string) {
+      const job = db.read().jobs.find(j => j.id === id)
+      if (!job || job.kind !== 'image' || job.route?.provider !== 'imagefree') throw new Error('这不是免费生图任务')
+      if (job.imageId) return publicJob(job)
+      if (stopped || paused || active.has(id) || job.status !== 'failed' || job.submission || hasRemoteResult(job)) throw new Error('原任务状态已变化，请恢复故事并检查图片任务')
+      if (!/^[a-f0-9]{64}$/.test(imageId)) throw new MediaError('media_input')
+      const updated = update(id, { imageId, status: 'ready', submission: false, error: undefined, reason: undefined, phase: 'save' })
+      record(updated, 'succeeded', 'save')
+      return publicJob(updated)
+    },
     create(input: Partial<MediaJob> & { id: string; kind: 'image' | 'stt'; purpose: MediaJob['purpose']; entryId?: number }) {
       const requestIds = ids(input.entryId)
       try {
@@ -191,7 +223,7 @@ export function mediaJobs(options: { directory: string; identity?: string; pause
         if (input.kind === 'image' && (typeof input.prompt !== 'string' || !input.prompt.trim() || input.prompt.length > 3000)) throw new MediaError('media_input')
         if (input.kind === 'stt' && (!/^[a-f0-9]{64}$/.test(input.audioId ?? '') || !Number.isFinite(input.duration) || input.duration! <= 0 || input.duration! > 180)) throw new Error('录音参数无效')
         const { apiKey, ...publicRoute } = route
-        const job: Job = { id: input.id, kind: input.kind, purpose: input.purpose, at: new Date().toISOString(), status: 'queued', route: publicRoute, requestIds, prompt: input.kind === 'image' ? imagePrompt({ ...config, visual: { ...config.visual, appearance: config.visual.appearance || options.identity || '' } }, input.prompt!) : undefined, caption: String(input.caption ?? '').slice(0, 2000), audioId: input.audioId, duration: input.duration, ratio: input.purpose === 'avatar' ? '1:1' : config.visual.ratio, references: [...config.visual.references] }
+        const job: Job = { id: input.id, kind: input.kind, purpose: input.purpose, feedPostId: input.feedPostId, at: new Date().toISOString(), status: 'queued', route: publicRoute, requestIds, prompt: input.kind === 'image' ? imagePrompt({ ...config, visual: { ...config.visual, appearance: config.visual.appearance || options.identity || '' } }, input.prompt!) : undefined, caption: String(input.caption ?? '').slice(0, 2000), audioId: input.audioId, duration: input.duration, ratio: input.purpose === 'avatar' ? '1:1' : config.visual.ratio, references: [...config.visual.references] }
         db.change(s => { if (s.jobs.length >= 500) s.jobs = s.jobs.filter(j => !j.delivered).concat(s.jobs.filter(j => j.delivered).slice(-200)); s.jobs.push(job) })
         record(job, 'queued')
         return publicJob(job)
@@ -203,6 +235,7 @@ export function mediaJobs(options: { directory: string; identity?: string; pause
       if (!job) throw new Error('任务不存在')
       if (job.delivered || active.has(id) || ['queued', 'running', 'submitted'].includes(job.status)) return
       if (job.status === 'unknown' || uncertainSubmission(job)) throw new Error('提交结果未知，不能安全重复生成；请先在服务端确认')
+      if (job.providerTaskId && !job.imageUrl && !job.cachedResult && job.route?.provider !== 'imagefree') throw new Error('该渠道的异步查询协议暂不支持，请在服务端查看原任务')
       const { apiKey, ...route } = job.kind === 'image' ? options.config().image : options.config().stt
       const updated = update(id, { status: job.status === 'ready' ? 'ready' : 'queued', error: undefined, ...(!job.submission && !job.providerTaskId && !job.imageUrl ? { route } : {}) })
       record(updated, 'queued')

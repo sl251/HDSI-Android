@@ -160,7 +160,7 @@ export async function startHost(input: HostConfig) {
   const activeVision = visionProjection(input)
   const media = imageStore(input.dataDir)
   const experience = experienceRuntime({ directory: input.dataDir, paused: true, identity: `${input.card.name}: ${input.card.description}`.slice(0, 1800), settings: input.experience, audioDirectory: input.voiceBridge?.directory,
-    getImage: media.get, saveImage: media.registerSticker, diagnostics,
+    getImage: media.get, saveImage: media.registerGeneratedImage, diagnostics,
     wake: async () => app.interlude.mobileObserveFeed(current),
     deliver: async job => {
       if (job.kind !== 'image' || job.purpose !== 'chat') return
@@ -261,6 +261,12 @@ export async function startHost(input: HostConfig) {
       return experience.jobs.create({ id: String(payload.id), kind, purpose: purpose as MediaJob['purpose'], prompt, caption: payload.caption as string, audioId: payload.audioId as string, duration: payload.duration as number })
     }
     if (method === 'media.retry') { experience.jobs.retry(String(payload.id)); return { accepted: true } }
+    if (method === 'media.freeInput') return experience.jobs.freeInput(String(payload.id))
+    if (method === 'media.completeFree') {
+      const input = experience.jobs.freeInput(String(payload.id))
+      if (input.completed) return { completed: true }
+      return experience.jobs.completeFree(String(payload.id), media.save(payload.dataUri).id)
+    }
     if (method === 'weather.status') return weatherStatus()
     if (method === 'turn.retry') {
       const retryRun = async () => {

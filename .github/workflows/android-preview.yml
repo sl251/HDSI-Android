@@ -84,6 +84,7 @@ jobs:
           node tests/experience-ui.mjs
           node tests/message-diagnostics-ui.mjs
           node tests/preview97-ui.mjs
+          node tests/preview971-ui.mjs
       - name: Verify and retain actual preview.1 rootfs regression input
         env:
           GH_TOKEN: ${{ github.token }}
@@ -143,7 +144,7 @@ jobs:
           if-no-files-found: error
           retention-days: 30
 
-  publish-preview-97:
+  publish-preview-971:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     needs: [qq-linux-arm64, build]
     runs-on: ubuntu-24.04
@@ -152,15 +153,15 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
-      - name: Publish signed Preview 9.7 as latest
+      - name: Publish signed Preview 9.7.1 as latest
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          test "$(node -p "require('./package.json').version")" = "0.1.0-preview.9.7"
+          test "$(node -p "require('./package.json').version")" = "0.1.0-preview.9.7.1"
           gh run download "$GITHUB_RUN_ID" --repo "$GITHUB_REPOSITORY" --name "HDS-Android-preview-$GITHUB_SHA" --dir release-artifacts
-          apk=$(find release-artifacts -name 'HDS-Android-0.1.0-preview.9.7-arm64.apk' -print -quit)
-          source=$(find release-artifacts -name 'HDS-Android-0.1.0-preview.9.7-source.tar.gz' -print -quit)
+          apk=$(find release-artifacts -name 'HDS-Android-0.1.0-preview.9.7.1-arm64.apk' -print -quit)
+          source=$(find release-artifacts -name 'HDS-Android-0.1.0-preview.9.7.1-source.tar.gz' -print -quit)
           sums=$(find release-artifacts -name 'SHA256SUMS.txt' -print -quit)
           test -s "$apk" && test -s "$source" && test -s "$sums"
           (cd "$(dirname "$sums")" && sha256sum -c SHA256SUMS.txt)
-          gh release create v0.1.0-preview.9.7 "$apk" "$source" "$sums" --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --title 'HDSI Android 0.1.0-preview.9.7' --notes-file docs/PREVIEW9.7.md --latest
+          gh release create v0.1.0-preview.9.7.1 "$apk" "$source" "$sums" --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --title 'HDSI Android 0.1.0-preview.9.7.1' --notes-file docs/PREVIEW9.7.1.md --latest

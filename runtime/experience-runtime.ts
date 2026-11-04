@@ -17,7 +17,10 @@ export function experienceRuntime(options: { directory: string; identity?: strin
   let waking: Promise<boolean> | undefined
   const actions = atomicState<{ seen: number[]; lastImageAt: number }>(join(options.directory, 'mobile-actions.json'), () => ({ seen: [], lastImageAt: 0 }))
   const jobs = mediaJobs({ ...options, config: () => config, delivered: async job => {
-    if (job.kind === 'image' && job.purpose === 'feed') feed.mutate('character', 'post', { content: job.caption, images: [job.imageId] }, job.id)
+    if (job.kind === 'image' && job.purpose === 'feed') {
+      if (!job.imageId) throw new Error('动态图片尚未保存')
+      if (!job.feedPostId || !feed.attachImages(job.feedPostId, [job.imageId])) feed.mutate('character', 'post', { content: job.caption, images: [job.imageId] }, job.id)
+    }
     else await options.deliver(job)
   } })
   const saveTurn = (turn: Turn) => turns.change(s => { const at = s.rows.findIndex(t => t.id === turn.id); if (at >= 0) s.rows[at] = { ...turn }; else s.rows.push({ ...turn }); s.rows = s.rows.slice(-200) })
@@ -66,7 +69,10 @@ export function experienceRuntime(options: { directory: string; identity?: strin
               : !(Number(action.willingness) >= .7 && Number(action.willingness) <= 1) ? 'image_willingness'
               : Date.now() - actions.read().lastImageAt < config.visual.cooldownMinutes * 60000 && !jobs.latestAutonomousImageWasRejected() ? 'image_cooldown' : undefined
             if (reason) { jobs.skipped({ id, purpose, entryId }, reason); continue }
-            jobs.create({ id, kind: 'image', purpose, prompt: action.scene, caption: action.content, entryId })
+            // Some models emit a text post and its matching illustration separately.
+            // Attach the result to that exact same-turn post instead of duplicating it.
+            const companion = purpose === 'feed' ? requests.findIndex((other: any) => other?.kind === 'post' && typeof other.content === 'string' && other.content.trim() && (!action.content || other.content.trim() === String(action.content).trim())) : -1
+            jobs.create({ id, kind: 'image', purpose, prompt: action.scene, caption: action.content || (companion >= 0 ? requests[companion].content : ''), feedPostId: companion >= 0 ? `role-action-${entryId}-${companion}` : undefined, entryId })
             actions.change(s => { s.lastImageAt = Date.now() })
           } else if (config.feedEnabled && ['post', 'comment', 'like'].includes(action.kind)) feed.mutate('character', action.kind, action, id)
         } catch { /* An invalid optional action must not veto the authored reply. */ }

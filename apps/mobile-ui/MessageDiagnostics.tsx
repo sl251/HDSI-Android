@@ -1,10 +1,10 @@
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import type { DiagnosticMessageEvent, DiagnosticMessagesResult, Message, NativeBridge } from '../../packages/contracts'
+import type { DiagnosticMessageEvent, DiagnosticMessagesResult, MediaJob, Message, NativeBridge } from '../../packages/contracts'
 import { EventDetail, DiagnosticMessageCard } from './DiagnosticMessageCard'
-import { aggregateDiagnosticMessages, diagnosticsEmptyText, visibleDiagnosticMessages, type DiagnosticView } from './message-diagnostics'
+import { aggregateDiagnosticMessages, diagnosticsEmptyText, latestRetrieval, visibleDiagnosticMessages, type DiagnosticView } from './message-diagnostics'
 import './message-diagnostics.css'
 
-export function MessageDiagnostics({ bridge, healthy, messageId, messages = [], close }: { bridge: NativeBridge; healthy: boolean; messageId: string; messages?: Message[]; close: () => void }) {
+export function MessageDiagnostics({ bridge, healthy, messageId, messages = [], jobs = [], refreshJobs, configureImages, close }: { bridge: NativeBridge; healthy: boolean; messageId: string; messages?: Message[]; jobs?: MediaJob[]; refreshJobs?: () => Promise<void>; configureImages?: () => void; close: () => void }) {
   const [events, setEvents] = useState<DiagnosticMessageEvent[]>([])
   const [error, setError] = useState(''), [loading, setLoading] = useState(true)
   const [scope, setScope] = useState(messageId), [view, setView] = useState<DiagnosticView>('all')
@@ -38,7 +38,7 @@ export function MessageDiagnostics({ bridge, healthy, messageId, messages = [], 
     const timer = setInterval(() => { if (!document.hidden) void read() }, 3000)
     return () => { alive = false; clearInterval(timer) }
   }, [bridge, healthy, scope, revision])
-  const background = events.filter(event => !event.requestIds.length && ['embedding', 'rerank'].includes(event.stage) && (view !== 'failed' || event.outcome === 'fallback'))
+  const background = view === 'images' || view === 'failed' ? [] : latestRetrieval(events.filter(event => !event.requestIds.length))
   const grouped = useMemo(() => aggregateDiagnosticMessages(events.filter(event => event.requestIds.length || !['embedding', 'rerank'].includes(event.stage)), messages), [events, messages])
   const scoped = useMemo(() => grouped.filter(message => !scope || message.aliases.includes(scope)), [grouped, scope])
   const visible = useMemo(() => visibleDiagnosticMessages(scoped, view, messageId), [scoped, view, messageId])
@@ -54,7 +54,12 @@ export function MessageDiagnostics({ bridge, healthy, messageId, messages = [], 
     catch { setError('诊断导出失败，请重新尝试。') } finally { setBusy(false) }
   }
   const ids = [...new Set([scope, ...grouped.flatMap(message => message.aliases)])].filter(Boolean)
-  const filteredCount = scoped.filter(message => view !== 'failed' || message.failure || message.events.some(event => event.outcome === 'fallback')).length
+  const filteredCount = scoped.filter(message => view === 'failed' ? message.failure : view === 'images' ? message.events.some(event => event.stage === 'image') : true).length
+  const retryImage = async (job: MediaJob) => {
+    setBusy(true); setError('')
+    try { await bridge.rpc({ method: 'media.retry', payload: { id: job.id } }); await refreshJobs?.(); setRevision(value => value + 1) }
+    catch (e) { setError(String(e)) } finally { setBusy(false) }
+  }
   return <div className="modal-backdrop"><section ref={dialog} className="modal message-diagnostics" role="dialog" aria-modal="true" aria-label="消息诊断" onKeyDown={event => {
     if (event.key !== 'Tab') return
     const elements = [...event.currentTarget.querySelectorAll<HTMLElement>('button:not(:disabled), select:not(:disabled)')]
@@ -64,17 +69,17 @@ export function MessageDiagnostics({ bridge, healthy, messageId, messages = [], 
   }}>
     <div className="section-title"><h2>消息诊断</h2><button ref={closeButton} onClick={close} aria-label="关闭消息诊断">×</button></div>
     <p className="caption">诊断记录保留 7 天，最多 2000 个事件、1 MiB，仅保存在本机。消息预览取自当前聊天，不写入诊断文件；诊断不保存正文、人设、密钥或音频，也不额外调用模型。</p>
-    <p className="caption">红色表示失败，可先看“怎么办”。生图会单独记录请求、查询、下载、保存和投递的失败原因；头像与动态生图也会显示。不回复、稍后回复和跳过媒体都可能是正常结果；未记录的步骤不代表成功。</p>
+    <p className="caption">先看“怎么办”，再按提示处理。图片生成与发送可用“图片”单独查看；“失败”只显示尚未恢复的消息或图片故障。向量检索属于可选增强，降级后仍可继续聊天。</p>
     {!healthy && <p role="status">先唤醒当前故事，再查看诊断。</p>}
-    <div className="diagnostic-filters" role="group" aria-label="诊断筛选">{([['all', '全部'], ['failed', '失败'], ['latest', '最新']] as const).map(([key, label]) => <button key={key} aria-pressed={view === key} onClick={() => setView(key)}>{label}</button>)}</div>
+    <div className="diagnostic-filters" role="group" aria-label="诊断筛选">{([['all', '全部'], ['failed', '失败'], ['images', '图片'], ['latest', '最新']] as const).map(([key, label]) => <button key={key} aria-pressed={view === key} onClick={() => setView(key)}>{label}</button>)}</div>
     <label>查看范围<select value={scope} onChange={event => setScope(event.target.value)}><option value="">全部记录</option>{ids.map(id => <option value={id} key={id}>{events.some(event => event.mediaJobId === id) ? `生图 ${id.slice(-12)}` : `消息 ${id.slice(0, 8)}`}</option>)}</select></label>
     <div className="actions"><button disabled={!healthy || busy || !events.length} onClick={() => void exportEvents()}>导出脱敏记录</button><button disabled={!healthy || busy} onClick={() => setConfirmClear(true)}>清空本故事记录</button></div>
     {confirmClear && <div role="alert"><p>清空诊断不会删除聊天。后续新回合仍会产生诊断记录。</p><button disabled={busy} onClick={() => { setBusy(true); void bridge.rpc({ method: 'diagnostics.clear' }).then(() => { setEvents([]); setRevision(value => value + 1); setConfirmClear(false) }).catch(() => setError('清空失败，请重试。')).finally(() => setBusy(false)) }}>确认清空</button><button disabled={busy} onClick={() => setConfirmClear(false)}>取消</button></div>}
     {error && <p role="alert">{error}</p>}
     {loading ? <p role="status">读取中…</p> : healthy && !error && !visible.length && !background.length && <p className="quiet-empty">{diagnosticsEmptyText(scope, view)}</p>}
     {messageId && !loading && !scoped.some(message => message.aliases.includes(messageId)) && !scope && <p role="status">这条消息暂无保留的诊断记录。</p>}
-    {!scope && background.length > 0 && <details open={view === 'failed' ? true : undefined}><summary>后台检索增强 · {background.length} 条</summary><ol>{background.map(event => <EventDetail key={event.id} event={event} />)}</ol></details>}
-    <ol className="diagnostic-messages" aria-label="按消息聚合的诊断">{visible.map(message => <DiagnosticMessageCard key={message.id} message={message} focused={message.aliases.includes(messageId)} />)}</ol>
+    <ol className="diagnostic-messages" aria-label="按消息聚合的诊断">{visible.map(message => <DiagnosticMessageCard bridge={bridge} refreshJobs={refreshJobs} key={message.id} message={message} focused={message.aliases.includes(messageId)} jobs={jobs} retryImage={job => void retryImage(job)} retryDisabled={busy || !healthy} configureImages={configureImages} />)}</ol>
+    {!scope && background.length > 0 && <details className="diagnostic-retrieval"><summary>后台检索增强 · {background.length} 条</summary><p className="caption">每个连接只显示最近结果。降级会使用本地排序，不代表生图或聊天失败；相同故障会暂缓请求。需要处理时，到空间 → 任务分工检查向量连接，或关闭不需要的检索增强。</p><ol>{background.map(event => <EventDetail key={event.id} event={event} />)}</ol></details>}
     {view === 'latest' && <p className="caption">最新显示最近 20 条消息；可切换“全部”查看更多。</p>}
     {filteredCount > 200 && view !== 'latest' && <p className="caption">最多显示 200 条消息。可用“查看范围”定位更早的消息。</p>}
   </section></div>

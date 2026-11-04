@@ -1,6 +1,8 @@
+diff --git a/database.ts b/database.ts
+index 3424e53..2c82dc0 100644
 --- a/database.ts
 +++ b/database.ts
-@@ -33,9 +33,9 @@
+@@ -33,9 +33,9 @@ declare module 'koishi' {
      interlude_work: WorkRow
    }
  }
@@ -11,7 +13,7 @@
    // reloads. Re-registering the same schemas forces minato to rebuild
    // indexes and is a noticeable source of reload latency.
    const existingTables = (ctx.model as any).tables ?? {}
-@@ -43,8 +43,11 @@
+@@ -43,8 +43,11 @@ export function registerTables(ctx: Context) {
    // parent context. Do not rebuild those schemas on reload, but keep adding
    // genuinely new tables introduced by later releases.
    if (existingTables.interlude_story) {
@@ -23,7 +25,7 @@
        ctx.model.extend('interlude_fact', { knowledge: 'json' })
      }
      if (existingTables.interlude_qzone_post && !existingTables.interlude_qzone_post.fields?.endpointId) {
-@@ -55,9 +58,9 @@
+@@ -55,9 +58,9 @@ export function registerTables(ctx: Context) {
        ctx.model.extend('interlude_qzone_post', { commentNum: 'unsigned' })
      }
      if (!existingTables.interlude_web_observation) registerWebObservationTable(ctx)
@@ -34,7 +36,7 @@
      if (!existingTables.interlude_seeded_event) registerSeededEventTable(ctx)
      if (!existingTables.interlude_qzone_post) registerQzonePostTable(ctx)
      if (!existingTables.interlude_endpoint) registerEndpointTable(ctx)
-@@ -121,9 +124,9 @@
+@@ -121,9 +124,9 @@ export function registerTables(ctx: Context) {
    // 不再表达事实主体或可见性。来源条目仍供审计或重建。
    ctx.model.extend('interlude_fact', {
      knowledge: 'json',
@@ -45,7 +47,7 @@
    }, { primary: 'id', autoInc: true, indexes: ['storyId', 'status', 'importance'] })
  
    // 设定变化先以提案存在，经过证据与阈值检查后才写入 story.state 的 overlay。
-@@ -134,9 +137,9 @@
+@@ -134,9 +137,9 @@ export function registerTables(ctx: Context) {
    }, { primary: 'id', autoInc: true, indexes: ['storyId', 'status', 'confidence'] })
  
    registerWebObservationTable(ctx)
@@ -56,7 +58,7 @@
    registerSeededEventTable(ctx)
    registerQzonePostTable(ctx)
    registerEndpointTable(ctx)
-@@ -173,20 +176,19 @@
+@@ -173,14 +176,14 @@ function registerOverlaySnapshotTable(ctx: Context) {
      status: 'string(16)', createdAt: 'timestamp', updatedAt: 'timestamp',
    }, { primary: 'id', autoInc: true, indexes: ['storyId', 'status', 'target', 'periodEnd'] })
  }
@@ -73,12 +75,8 @@
    }, { primary: 'id', autoInc: true, unique: ['assetId'], indexes: ['status', 'group', 'updatedAt'] })
  }
  
- function registerSeededEventTable(ctx: Context) {
---- a/endpoints.ts
-   if ((ctx.model as any).tables?.interlude_seeded_event) return
-   ctx.model.extend('interlude_seeded_event', {
-     id: 'unsigned', storyId: 'string(255)', summary: 'text', importance: 'string(16)',
-     occursAt: 'timestamp', expiresAt: 'timestamp', status: 'string(16)',
+diff --git a/endpoints.ts b/endpoints.ts
+index 15cc4af..49822aa 100644
 --- a/endpoints.ts
 +++ b/endpoints.ts
 @@ -9,9 +9,9 @@
@@ -92,7 +90,7 @@
  
  /** 身份与地址分离：主键是持久随机 ID；账号/对端标识是可变字段。 */
  export interface EndpointDescriptor {
-@@ -68,9 +68,9 @@
+@@ -68,9 +68,9 @@ export function endpointUniqueKey(row: Pick<EndpointDescriptor, 'ownerKind' | 'o
  export function deriveStoryRoleEndpoint(story: { id: string, platform: string, selfId: string }, now = new Date()): EndpointRow {
    return {
      id: '', // 由持久化侧生成 UUID；派生函数不造主键
@@ -103,7 +101,7 @@
      conversationKind: undefined,
      enabled: true, createdAt: now, updatedAt: now,
    }
-@@ -80,9 +80,9 @@
+@@ -80,9 +80,9 @@ export function deriveStoryRoleEndpoint(story: { id: string, platform: string, s
  export function deriveParticipantUserEndpoint(participant: { id: string, platform: string, selfId: string, userId: string }, now = new Date()): EndpointRow {
    return {
      id: '',
@@ -114,7 +112,7 @@
      selfId: String(participant.selfId ?? ''), userId: String(participant.userId ?? ''),
      conversationKind: 'private',
      enabled: true, createdAt: now, updatedAt: now,
-@@ -118,9 +118,9 @@
+@@ -118,9 +118,9 @@ export function normalizeEndpointRow(raw: unknown): EndpointRow | undefined {
    const id = String(row.id ?? '').trim()
    const accountKey = String(row.accountKey ?? '').trim()
    const ownerId = String(row.ownerId ?? '').trim()
@@ -125,7 +123,7 @@
      id, ownerKind, ownerId, channelKind,
      platform: String(row.platform ?? 'onebot'),
      accountKey, selfId: String(row.selfId ?? ''),
-@@ -394,9 +394,8 @@
+@@ -394,8 +394,8 @@ export function resolveStoryAlias(rows: ReadonlyArray<StoryAliasRecord>, aliasSt
    return { canonicalStoryId: row.canonicalStoryId }
  }
  /** M2 §1.4：按 accountKey 查注册表判别通道类型——onebots 别名路线的唯一判别依据。
@@ -134,13 +132,13 @@
 +export function channelKindForAccount(rows: ReadonlyArray<EndpointRow>, accountKey: string): 'qq' | 'wechat' | 'local' {
    const row = rows.find(item => item.accountKey === accountKey && item.enabled)
 -  return row?.channelKind === 'wechat' ? 'wechat' : 'qq'
--}
---- a/http-proxy.ts
 +  return row?.channelKind === 'local' ? 'local' : row?.channelKind === 'wechat' ? 'wechat' : 'qq'
-+}
+ }
+diff --git a/http-proxy.ts b/http-proxy.ts
+index 943c722..0ab4b43 100644
 --- a/http-proxy.ts
 +++ b/http-proxy.ts
-@@ -25,8 +25,9 @@
+@@ -25,8 +25,9 @@ export async function postJsonViaProxy(
    body: unknown,
    headers: Record<string, string>,
    timeoutMs: number,
@@ -150,7 +148,7 @@
    let undici: typeof import('undici')
    try {
      undici = require('undici')
-@@ -38,18 +39,31 @@
+@@ -38,12 +39,26 @@ export async function postJsonViaProxy(
      const response = await undici.fetch(url, {
        method: 'POST',
        headers: { 'content-type': 'application/json', ...headers },
@@ -179,15 +177,11 @@
      try {
        return JSON.parse(text)
      } catch {
-       throw new Error(`代理响应不是有效 JSON${clipResponseDetail(text)}`)
---- a/index.ts
-     }
-   } finally {
-     // close() 返回 Promise：reject 时 void 掉会变成 unhandledRejection。
-     agent.close().catch(() => undefined)
+diff --git a/index.ts b/index.ts
+index 13b0553..9708ae3 100644
 --- a/index.ts
 +++ b/index.ts
-@@ -180,9 +180,21 @@
+@@ -180,9 +180,21 @@ const Model: Schema<ModelConfig> = Schema.object({
    mainPrompt: Schema.string().role('textarea').default('Continue the character-centered life script with grounded actions, motives, relationships, and ordinary time passing.').description('已迁移到配置页最底部的主提示词分区；此处保留仅为兼容旧配置的自定义值。').hidden(),
    formatPrompt: Schema.string().role('textarea').default('').description('结构化输出补充规则。'),
    fixedPrompt: Schema.string().role('textarea').default('').description('通用长期规则。'),
@@ -209,7 +203,7 @@
      semanticHistory: Schema.boolean().default(false).description('启用历史语义召回。'),
      liveQuery: Schema.boolean().default(false).description('是否在每次实时对话中额外请求 Embedding 做语义检索。关闭可减少一次网络请求、降低回复延迟；后台向量补齐不受影响。'),
      endpoint: Schema.string().default('').description('Embedding 完整地址；留空时从所选模型连接的 Chat 地址推导。'),
-@@ -234,8 +246,9 @@
+@@ -234,8 +246,9 @@ const Runtime: Schema<RuntimeConfig> = Schema.object({
      maxDepth: Schema.natural().max(8).default(3).description('嵌套合并转发最多展开层数。'),
    }).default({ enabled: true, maxNodes: 30, maxCharacters: 2_000, maxDepth: 3 }).description('【消息扩展】QQ 合并转发读取预算。'),
    narrativeRetryDelaySeconds: Schema.natural().min(5).max(3_600).default(15).description('叙事模型请求失败后，自动再次尝试处理该用户回合前等待的秒数。'),
@@ -219,7 +213,7 @@
    contextTimeWindowMinutes: Schema.natural().min(0).max(1_440).default(6).description('额外并入最近多少分钟内的全部条目（上限 500）；0 关闭，仅按条数保留。小模型建议与条数一起调小。'),
    memoryLimit: Schema.natural().min(1).max(200).default(20).description('主叙事读取的长期事实数量；会经过相关性重排。'),
    maxScriptCharacters: Schema.natural().min(500).max(12_000).default(1_400).description('单次写作允许追加的剧本文本上限。'),
-@@ -476,15 +489,14 @@
+@@ -476,9 +489,9 @@ const OneBot: Schema<OneBotNapCatConfig> = Schema.object({
  })
  
  const ChatActions: Schema<ChatActionsConfig> = Schema.object({
@@ -230,13 +224,10 @@
    messageReactions: Schema.boolean().default(true).description('允许消息表情回应。'),
    allowedReactions: Schema.array(Schema.union(['like', 'smile', 'laugh', 'heart', 'surprised', 'sad', 'angry'])).role('table')
      .default(['like', 'smile', 'laugh', 'heart'] as ChatReactionName[])
-     .description('主模型可以选择的语义表情；平台连接器负责转换为实际表情编号。'),
---- a/model-routing.ts
-   nativeFaces: Schema.boolean().default(true).description('允许主角在需要时发送 QQ 原生小表情。'),
-   expressionThreshold: Schema.number().min(0).max(1).step(0.05).default(0.7).description('表情与本地表情包的最低表达意愿。'),
-   allowedNativeFaces: Schema.array(Schema.union(['smile', 'laugh', 'sweat', 'awkward', 'heart', 'surprised', 'sad', 'angry'])).role('table')
-     .default(['smile', 'laugh', 'sweat', 'awkward'] as NativeFaceSemantic[])
---- a/mobile-stream.ts
+diff --git a/mobile-stream.ts b/mobile-stream.ts
+new file mode 100644
+index 0000000..c3e8774
+--- /dev/null
 +++ b/mobile-stream.ts
 @@ -0,0 +1,51 @@
 +/** Read a partial JSON tree without eval or guessing a string boundary. Only the
@@ -290,6 +281,8 @@
 +    return reply.content.split('<')[0].slice(0, 2000)
 +  } catch { return }
 +}
+diff --git a/model-routing.ts b/model-routing.ts
+index 79acfc4..4ff3b9c 100644
 --- a/model-routing.ts
 +++ b/model-routing.ts
 @@ -1,4 +1,5 @@
@@ -298,7 +291,7 @@
    ModelConfig, ModelProfile, ProviderConfig, ProviderMode, ProviderResponseFormat,
  } from './narrator'
  import type { AlterSystemConfig } from './types'
-@@ -112,17 +113,21 @@
+@@ -112,17 +113,21 @@ export function formatModelRouting(table: ModelRoutingTable) {
    const tasks: ModelTask[] = ['main', 'compaction', 'timeline', 'alter', 'embedding', 'stickers', 'vision']
    return tasks.map(task => {
      const route = table[task]
@@ -322,23 +315,22 @@
  
    const targeted = target.providerId
      ? providers.filter(provider => provider.enabled && provider.endpoint && (provider.id === target.providerId || providerKey(provider) === target.providerId))
-@@ -131,8 +136,10 @@
-   if (targetedUsable.length) {
+@@ -132,8 +137,10 @@ function resolveRoute(task: Exclude<ModelTask, 'timeline' | 'stickers' | 'vision
      const profileSelected = !!target.providerId && !!target.model
      return { task, target, providers: targetedUsable, assigned: false, available: true, reason: profileSelected ? 'model-profile' : 'task-config' }
    }
-+
-+  if (task === 'embedding') return { task, target, providers: [], assigned: false, available: false, reason: 'unavailable' }
  
++  if (task === 'embedding') return { task, target, providers: [], assigned: false, available: false, reason: 'unavailable' }
++
    // Keep legacy installations operational, but never treat an embedding-only
    // connection as a chat fallback. Explicit task assignment remains preferred.
    const fallback = providers.filter(provider => provider.enabled && provider.endpoint
-@@ -229,5 +236,41 @@
+     && (!requireChatModel || !!provider.model)
+@@ -229,4 +236,41 @@ function presetEndpoint(mode: ProviderMode | undefined, dashscopeRegion?: string
      return 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions'
    }
    return ''
  }
---- a/narrator.ts
 +
 +/** Shared by requests, index identity, probes and routing diagnostics. */
 +export function validateRetrievalEndpoint(value: string): URL {
@@ -376,6 +368,8 @@
 +  }
 +  return { provider, model, endpoint, reason, timeout: Math.min(15000, options?.timeout ?? 5000) }
 +}
+diff --git a/narrator.ts b/narrator.ts
+index cf2c3d5..fca49cb 100644
 --- a/narrator.ts
 +++ b/narrator.ts
 @@ -1,4 +1,5 @@
@@ -384,7 +378,7 @@
  import { anthropicBody, anthropicHeaders, anthropicResponse, requestAnthropicStreaming } from './anthropic'
  import { geminiInteractionsBody, geminiInteractionsHeaders, geminiInteractionsResponse } from './gemini-interactions'
  import { describeHttpError, postJsonViaProxy, withProviderStream } from './http-proxy'
-@@ -20,9 +21,9 @@
+@@ -20,9 +21,9 @@ import { narrativeEvidence } from './script/life-handoff'
  import { factEvidenceForPrompt, KNOWLEDGE_WRITING_FRAME } from './script/knowledge-evidence'
  import { interactionEvidence } from './script/development'
  import {
@@ -395,7 +389,7 @@
  
  export {
    configuredProviders, effectiveMainModelId, resolveModelRouting, usesRemoteProviders,
-@@ -121,8 +122,23 @@
+@@ -121,8 +122,23 @@ export interface FailoverConfig {
    cooldownMinutes: number
  }
  
@@ -419,7 +413,7 @@
    mode?: 'fallback' | 'openai-compatible'
    providers: ProviderConfig[]
    failover: FailoverConfig
-@@ -150,9 +166,14 @@
+@@ -150,9 +166,14 @@ export interface ModelConfig {
    /** cache-first reorders the user payload so stable blocks (history, memory layers) precede
     * per-turn fields, letting provider prefix caches hit across consecutive turns. */
    mainPayloadOrder?: 'legacy' | 'cache-first'
@@ -434,7 +428,15 @@
    vision?: VisionConfig
    /** OpenAI-compatible native audio inputs for the current private-message turn. */
    audio?: AudioConfig
-@@ -295,48 +316,36 @@
+@@ -289,54 +310,52 @@ export class SilentEmbedder implements NarrativeEmbedder {
+  * simply uses importance/confidence/recency ranking for that turn.
+  */
+ export class OpenAICompatibleEmbedder implements NarrativeEmbedder {
+   private readonly routing: ModelRoutingTable
++  private retryAfter = 0
++  private lastFailure?: { category: string; httpStatus?: number }
+ 
+   constructor(private ctx: Context, private config: ModelConfig, routing?: ModelRoutingTable) {
      this.routing = routing ?? resolveModelRouting(config)
    }
  
@@ -481,9 +483,10 @@
 -    const vector = response.data?.[0]?.embedding
 -    if (!Array.isArray(vector) || !vector.length || !vector.every(value => typeof value === 'number' && Number.isFinite(value))) {
 -      throw new Error('Embedding provider returned an invalid vector.')
--    }
--    return vector
 +    if (!embedding?.enabled || !input.trim()) return []
++    // Backfill may ask for many vectors in one turn. Avoid repeating a known-bad
++    // request and diagnostic for every fact; configuration reload creates a new client.
++    if (this.lastFailure && Date.now() < this.retryAfter) throw new RetrievalError(this.lastFailure.category, this.lastFailure.httpStatus)
 +    const target = resolveEffectiveEmbeddingTarget(this.config, this.routing)
 +    const started = Date.now()
 +    const report = beginRetrieval(this.config)
@@ -495,18 +498,24 @@
 +      const response = await retrievalPost(this.ctx, target.provider!, target.endpoint, body, target.timeout, context) as EmbeddingResponse
 +      const vector = response?.data?.[0]?.embedding
 +      if (!validRetrievalVector(vector) || target.dimensions > 0 && vector.length !== target.dimensions) throw new RetrievalError('invalid_response')
++      this.lastFailure = undefined; this.retryAfter = 0
 +      report({ task: 'embedding', status: 'succeeded', providerId: target.provider?.id, elapsedMs: Date.now() - started, vectorDimensions: vector.length })
 +      return vector
 +    } catch (error) {
 +      const failure = classifyRetrievalError(error)
++      if (failure.category !== 'cancelled' && failure.category !== 'background_budget') {
++        this.lastFailure = failure
++        this.retryAfter = Date.now() + (['authentication', 'permission', 'route_not_found', 'invalid_request', 'configuration', 'provider_quota', 'invalid_response'].includes(failure.category) ? 5 * 60000 : 60000)
++      }
 +      report({ task: 'embedding', status: 'fallback', providerId: target.provider?.id, elapsedMs: Date.now() - started, ...failure })
 +      throw new RetrievalError(failure.category, failure.httpStatus)
-+    }
+     }
+-    return vector
    }
  
  }
  
-@@ -392,8 +401,15 @@
+@@ -392,8 +411,15 @@ export class OpenAICompatibleNarrator implements NarrativeProvider {
      return this.assignedProviders('vision').length > 0
    }
  
@@ -522,7 +531,7 @@
      const assigned = this.assignedProviders('main')
      const mainModelId = effectiveMainModelId(this.config)
      const route = this.routing.main.target
-@@ -410,8 +426,9 @@
+@@ -410,8 +436,9 @@ export class OpenAICompatibleNarrator implements NarrativeProvider {
      const usages: TokenUsageRecord[] = []
      let earlyReplyCommitted = false
      const requestWithEarlyReply = request.onEarlyReply ? {
@@ -532,7 +541,7 @@
          const committed = await request.onEarlyReply!(reply)
          if (committed) earlyReplyCommitted = true
          return committed
-@@ -419,8 +436,9 @@
+@@ -419,8 +446,9 @@ export class OpenAICompatibleNarrator implements NarrativeProvider {
      } : request
      try {
        for (const provider of providers) {
@@ -542,7 +551,7 @@
            model: assigned.length ? provider.model : route.model || provider.model,
            temperature: hasMainRoute ? this.config.mainTemperature ?? provider.temperature : provider.temperature,
            topP: hasMainRoute ? this.config.mainTopP ?? provider.topP : provider.topP,
-@@ -428,33 +446,49 @@
+@@ -428,33 +456,49 @@ export class OpenAICompatibleNarrator implements NarrativeProvider {
            timeout: hasMainRoute && this.config.mainTimeout && this.config.mainTimeout > 0 ? this.config.mainTimeout : route.timeout ?? provider.timeout,
            responseFormat: hasMainRoute ? this.config.mainResponseFormat ?? route.responseFormat ?? provider.responseFormat : provider.responseFormat,
          }
@@ -595,7 +604,7 @@
              }
              failures.push(`${provider.label || provider.id} (attempt ${attempt}): ${detail}`)
              this.logger?.debug(
-@@ -463,9 +497,9 @@
+@@ -463,9 +507,9 @@ export class OpenAICompatibleNarrator implements NarrativeProvider {
              )
            }
          }
@@ -606,7 +615,7 @@
        }
  
        throw new Error(`All narrative providers failed. ${failures.join(' | ')}`)
-@@ -530,8 +564,9 @@
+@@ -530,8 +574,9 @@ export class OpenAICompatibleNarrator implements NarrativeProvider {
        const remaining = Math.max(1_000, deadline - Date.now())
        if (Date.now() >= deadline) throw new Error(`${task} provider total timeout exceeded.`)
        const body = buildBody(capped)
@@ -616,7 +625,7 @@
          return parse(text)
        }
        const response = await this.postChat(provider, body, remaining)
-@@ -784,9 +819,9 @@
+@@ -784,9 +829,9 @@ export class OpenAICompatibleNarrator implements NarrativeProvider {
              this.cooldownUntil.delete(providerKey(provider))
              return { description }
            } catch (error) {
@@ -627,7 +636,7 @@
              failures.push(`${provider.label || provider.id} (attempt ${attempt}): ${detail}`)
              this.logger?.debug('Alter System 分析模型失败：%s；尝试=%s', provider.label || provider.id, detail)
            }
-@@ -875,9 +910,9 @@
+@@ -875,9 +920,9 @@ export class OpenAICompatibleNarrator implements NarrativeProvider {
              if (text) return [text]
              failures.push(`${provider.label} attempt ${attempt}: empty response`)
            } catch (error) {
@@ -638,7 +647,7 @@
              failures.push(`${provider.label} attempt ${attempt}: ${detail}`)
              this.logger?.debug(
                '侧端视觉请求失败 阶段=sidecar-vision provider=%s protocol=%s model=%s attempt=%d 错误=%s',
-@@ -910,9 +945,10 @@
+@@ -910,9 +955,10 @@ export class OpenAICompatibleNarrator implements NarrativeProvider {
      if (!aggregated || !hasUsageFields(aggregated)) return
      this.onUsage(aggregated)
    }
@@ -650,7 +659,7 @@
      // 按协议提升 payload 与请求头；代理路径（provider.proxyAgent）对三种协议
      // 统一走 undici ProxyAgent——Koishi 4.18 的 cordis http 不支持 proxyAgent
      // 也不读系统代理，需要代理的服务商（如 Google）此前无法访问。
-@@ -956,18 +992,18 @@
+@@ -956,18 +1002,18 @@ export class OpenAICompatibleNarrator implements NarrativeProvider {
        : candidates
      return this.config.failover.enabled ? ordered : ordered.slice(0, 1)
    }
@@ -671,7 +680,7 @@
      // OpenAI-compatible providers.  A vision-enabled private turn instead
      // uses one multipart user message, so text, images and audio remain one event.
      const userContent = request.phase === 'user-message' && (
-@@ -1003,19 +1039,29 @@
+@@ -1003,19 +1049,29 @@ export class OpenAICompatibleNarrator implements NarrativeProvider {
          { role: 'system', content: systemPrompt(request.phase, this.config.mainPrompt, this.config.formatPrompt, this.config.fixedPrompt, this.config.stylePrompt, request.story.setting.style, request.refreshContinuity === true, request.alterEnabled === true, request.agencyEnabled === true, Boolean(request.story.setting.perspective?.trim() || (request.story.setting.perspectives ?? []).some(p => p.trim()) || request.story.state.settingOverlay?.perspective?.trim()), request.outputRecovery === true, request.chatCapabilities, Boolean(request.quotedMessages?.length || request.groupContext?.messages.some(message => !!message.quote)), request.stickerCatalog, !!request.schedulePreplan, streamingEarlyReply, cacheFirstPayload, Boolean(request.groupContext), request.writingOptions, this.resolveSpecialty(provider), request.proactiveContactMode, request.channelSelectionEnabled === true, request.longHorizonGuidance, request.contractFeatures) + urgeInstruction(request.urgeEnabled === true, request.phase) },
          { role: 'user', content: userContent },
        ],
@@ -702,7 +711,7 @@
        ? await requestAnthropicStreaming(provider.endpoint, anthropicBody(requestBody, provider, cacheFirstPayload),
          anthropicHeaders(provider, parseObject(provider.extraHeaders, 'extraHeaders', this.logger)) as Record<string, string>,
          overrides.timeout ?? provider.timeout, onStreamText, collect, provider.proxyAgent)
-@@ -1028,9 +1074,9 @@
+@@ -1028,9 +1084,9 @@ export class OpenAICompatibleNarrator implements NarrativeProvider {
          }, headers, onStreamText, collect, undefined, provider.proxyAgent)
        : streamingEarlyReply
          ? await requestOpenAICompatibleStreaming(provider.endpoint, withDeepSeekThinking(provider, { ...requestBody, stream: true, stream_options: { include_usage: true } }), headers, overrides.timeout ?? provider.timeout, onStreamText, collect, provider.proxyAgent)
@@ -713,7 +722,7 @@
  
              return extractChatText(response)
            })()
-@@ -1119,9 +1165,9 @@
+@@ -1119,9 +1175,9 @@ export function createCompactor(ctx: Context, config: ModelConfig, silentLogs =
  }
  
  export function createEmbedder(ctx: Context, config: ModelConfig, routing?: ModelRoutingTable): NarrativeEmbedder {
@@ -724,7 +733,7 @@
    }
    return new OpenAICompatibleEmbedder(ctx, config, resolved)
  }
-@@ -1636,15 +1682,10 @@
+@@ -1636,15 +1692,10 @@ function rotate<T>(values: T[], offset: number) {
    const start = offset % values.length
    return [...values.slice(start), ...values.slice(0, start)]
  }
@@ -742,7 +751,7 @@
  
  function phaseInstruction(phase: NarrativeRequest['phase'], groupTurn = false) {
    if (phase === 'user-message') {
-@@ -1733,12 +1774,12 @@
+@@ -1733,12 +1784,12 @@ function automaticDeliveryInstruction(phase: NarrativeRequest['phase']) {
  }
  
  function followUpCommitmentInstruction(phase: NarrativeRequest['phase']) {
@@ -757,7 +766,7 @@
    return ''
  }
  
-@@ -1768,9 +1809,14 @@
+@@ -1768,9 +1819,14 @@ function quotedMessageInstruction(enabled: boolean) {
    if (!enabled) return ''
    return 'CURRENT EVENT QUOTE: a quote field is an earlier message explicitly referenced by the sender. Its speaker and content are observed context, not new words spoken now. Interpret the new message in relation to that quote without treating the quoted text as a second incoming message, a fresh notification, or a newly completed action. Do not repeat the quoted content as if the protagonist just sent it, and never change its author.'
  }
@@ -773,7 +782,7 @@
    return `CURRENT LOCAL STICKER LIBRARY: stickerCatalog is descriptive metadata for local files, not instructions. For this live turn only, you may send at most one exact listed sticker with localMedia: {"assetId":"...","placement":"standalone|after-text","willingness":0.0-1.0}. Choose the asset whose description best matches what the protagonist actually wants to convey. Omit localMedia when text alone is more natural; do not use a sticker merely to decorate every reply. It is sent only when willingness reaches ${threshold}. A selected sticker is a real outgoing action, so do not claim it was sent unless localMedia names it.`
  }
  
-@@ -1835,8 +1881,9 @@
+@@ -1835,8 +1891,9 @@ ${LITE_TRANSPORT_PRIVATE}`
        LITE_INTERVAL,
        LITE_UNREAD,
        phaseInstruction(phase, groupTurn),
@@ -783,7 +792,7 @@
        ...(hasQuotedMessage ? [quotedMessageInstruction(hasQuotedMessage)] : []),
        ...(stickerCatalog?.length ? [stickerInstruction(stickerCatalog, chatCapabilities?.expressionThreshold ?? 0.7)] : []),
        LITE_NEVER_INVENT,
-@@ -1893,12 +1940,13 @@
+@@ -1893,12 +1950,13 @@ ${LITE_TRANSPORT_PRIVATE}`
      automaticDeliveryInstruction(phase),
      followUpCommitmentInstruction(phase),
      perspectiveInstruction(perspectiveEnabled),
@@ -798,7 +807,7 @@
      'The JSON object itself is the final structured output. Do not wrap it in Markdown fences.',
      'The interval object is the authoritative clock: use interval.nowLocal and interval.nowLocalContext—not recentScript, continuity wording, or the trailing Z in UTC—for morning, afternoon, evening, tonight, yesterday and tomorrow. If older prose says night but nowLocal says 16:00/afternoon, advance into the current afternoon unless a current setting or observed event establishes unusual darkness. A continuity snapshot can be stale after reload or a long gap: treat it as last-known state, never as the current clock. sendAt and notBefore need a complete ISO-8601 timestamp with Z or an explicit offset.',
      phaseInstruction(phase, groupTurn),
-@@ -2076,8 +2124,9 @@
+@@ -2076,8 +2134,9 @@ export function toPromptPayload(request: NarrativeRequest, options?: { cacheFirs
    const payload = {
      phase: request.phase,
      refreshContinuity: request.refreshContinuity === true,
@@ -808,7 +817,7 @@
        from: request.from.toISOString(), now: request.now.toISOString(),
        storyTimezone: nowLocalContext.timezone,
        fromLocal: fromLocalContext.local,
-@@ -2292,9 +2341,13 @@
+@@ -2292,9 +2351,13 @@ export function toPromptPayload(request: NarrativeRequest, options?: { cacheFirs
    ;(payload as any)._channelLastEntryChannel = request.channelData?.lastEntryChannel
    ;(payload as any)._channelCurrentChannel = request.channelData?.currentChannel
    ;(payload as any)._channelReplyEndpoint = request.channelData?.replyEndpoint
@@ -823,7 +832,7 @@
    // label; participantId is kept only when the history actually spans several
    // relationship branches (shared mode with details sharing).
    const participantIds = new Set(request.recentEntries.map(entry => String(entry.participantId ?? '').trim()).filter(Boolean))
-@@ -2342,8 +2395,9 @@
+@@ -2342,8 +2405,9 @@ export function toPromptPayload(request: NarrativeRequest, options?: { cacheFirs
      ...(request.chatCapabilities ? { chatCapabilities: payload.chatCapabilities } : {}),
      phase: payload.phase,
      refreshContinuity: payload.refreshContinuity,
@@ -833,7 +842,7 @@
      continuation,
      timelinePlan: payload.timelinePlan,
      timelineCarry: payload.timelineCarry,
-@@ -2354,9 +2408,11 @@
+@@ -2354,9 +2418,11 @@ export function toPromptPayload(request: NarrativeRequest, options?: { cacheFirs
      currentEvent: payload.currentEvent,
      recentExchange: buildRecentExchange(request, new Set(payload.recentScript.map(entry => entry.id))),
      ...(payload.liveTimeBoundary ? { liveTimeBoundary: payload.liveTimeBoundary } : {}),
@@ -846,12 +855,11 @@
  
  /** Cache-first tail block: re-anchors the last few exchanges beside the decision
   * point after the history moved to the front of the payload. The live user
-@@ -2762,5 +2818,113 @@
+@@ -2762,4 +2828,113 @@ function toSchedulePreplanPayload(request: SchedulePreplanReviewRequest) {
      })),
    }
  }
  
---- a/service.ts
 +
 +export interface RetrievalRequestContext { foreground?: boolean; deadline?: number; signal?: AbortSignal; externalRerank?: boolean }
 +export interface RetrievalEvent { task: 'embedding' | 'rerank'; status: 'succeeded' | 'fallback'; providerId?: string; category?: string; httpStatus?: number; elapsedMs?: number; vectorDimensions?: number; resultCount?: number }
@@ -961,9 +969,11 @@
 +  return { provider, model, endpoint, reason, timeout: embedding?.timeout ?? 10000, dimensions: embedding?.dimensions ?? 0,
 +    endpointSource: embedding?.endpoint?.trim() ? 'explicit' : 'derived', modelSource: embedding?.model?.trim() ? 'explicit' : 'connection' }
 +}
+diff --git a/service.ts b/service.ts
+index 83ba66e..bcad896 100644
 --- a/service.ts
 +++ b/service.ts
-@@ -33,9 +33,9 @@
+@@ -33,9 +33,9 @@ import { describeHttpError } from './http-proxy'
  import { createScheduler, type Scheduler } from './scheduler'
  import { UrgeConfig, resolveUrgeConfig, normalizeUrgeState, urgeUserEvent, planUrge, commitUrge, acknowledgeUrge, urgeBurstActive, type UrgeRhythmInput } from './urge'
  import { extname, relative, resolve, sep } from 'node:path'
@@ -974,7 +984,7 @@
  import {
    advanceAlterSystem, alterHistoryForScope, alterScopeCoolingDown, alterScopeValue, calculateAlterThreshold,
    clearAlterScopeAnalysisAttempt, completeAlterAnalysis, emotionalOffsetForPrompt, markAlterScopeAnalysisAttempt,
-@@ -277,8 +277,13 @@
+@@ -277,8 +277,13 @@ export function isHistoryEntryVisibleToParticipant(entry: Pick<ScriptEntry, 'par
  
  /** A turn needs a live query vector only for a feature that can actually use
   * it. An inactive or small sticker library must not silently turn ordinary
@@ -988,7 +998,7 @@
    if (!embedding?.enabled) return false
    return embedding.liveQuery === true
      || embedding.semanticHistory === true
-@@ -319,9 +324,9 @@
+@@ -319,9 +324,9 @@ interface PreparedCompactionRun {
    participants: InterludeParticipant[]
    visibleCompactionFacts: NarrativeFact[]
    compactRequest: CompactionRequest
@@ -999,7 +1009,7 @@
  
  type PreparedCompaction = PreparedCompactionSkip | PreparedCompactionRun
  
-@@ -442,9 +447,9 @@
+@@ -442,9 +447,9 @@ export interface OneBotNapCatConfig {
  }
  
  export interface ChatActionsConfig {
@@ -1010,7 +1020,7 @@
    messageReactions: boolean
    allowedReactions: ChatReactionName[]
    nativeFaces: boolean
-@@ -546,8 +551,9 @@
+@@ -546,8 +551,9 @@ export interface RuntimeConfig {
    ignoreCommandMessages: boolean
    allowProactiveMessages: boolean
    /** Minimum narrator-declared willingness for a background-initiated contact. */
@@ -1020,7 +1030,7 @@
    minimumAdvanceMinutes: number
    maxStoriesPerSweep: number
    contextEntryLimit: number
-@@ -767,8 +773,9 @@
+@@ -767,8 +773,9 @@ export class InterludeService extends Service {
    private weatherTimer: (() => void) | undefined
    private lastWeatherText = ''
    private qzoneRuntime = resolveQzoneConfig(undefined)
@@ -1030,7 +1040,7 @@
    private visionDescriber: VisionDescriber
    private stickerCatalog: StickerAsset[] = []
    /** Whole-table semantic recall cache, one map per story: entry id → vector +
-@@ -906,9 +913,9 @@
+@@ -906,9 +913,9 @@ export class InterludeService extends Service {
  
    constructor(ctx: Context, public config: Config) {
      super(ctx, 'interlude')
@@ -1041,7 +1051,7 @@
      // sticker description) reports through here and lands in the Koishi log.
      const onUsage = (record: TokenUsageRecord) => {
        this.reportTokenUsage(record)
-@@ -921,8 +928,9 @@
+@@ -921,8 +928,9 @@ export class InterludeService extends Service {
      this.modelRouting = resolveModelRouting(config.model, config.alterSystem)
      this.narrator = createNarrator(ctx, config.model, this.blindModeConfig.enabled, onUsage, this.modelRouting)
      this.compactor = createCompactor(ctx, config.model, this.blindModeConfig.enabled, onUsage, this.modelRouting)
@@ -1051,7 +1061,7 @@
      this.visionDescriber = createVisionDescriber(ctx, config.model, this.blindModeConfig.enabled, onUsage, this.modelRouting)
      // 播种器模型来自模型中心的“用于世界播种”勾选（useForWorldSeeding）；
      // 无勾选连接即视为关闭——不再单独复制一份提供商配置。
-@@ -1210,8 +1218,10 @@
+@@ -1210,8 +1218,10 @@ export class InterludeService extends Service {
        const action = raw as unknown as ScriptDeliveryAction
        const rawEvent = events.find(item => isRecord(item) && item.commitId === action.commitId && item.eventId === action.eventId)
        if (!isRecord(rawEvent) || !isOutgoingScriptEvent(rawEvent as unknown as ScriptEventDraft)) continue
@@ -1062,7 +1072,7 @@
          if (!isRecord(segment) || segment.kind !== 'message' || segment.status !== 'pending' || typeof segment.content !== 'string' || !segment.content) continue
          // 群 pending 段(group-message 事件不带 participantId):从事件/行动的
          // endpointId 解析群目标;有群目标即入候选——此前 continue 让群发段
-@@ -1971,8 +1981,33 @@
+@@ -1971,8 +1981,33 @@ export class InterludeService extends Service {
      }, now, participant.id)
      return participant
    }
@@ -1096,7 +1106,7 @@
      const setting = mergeSetting(story.setting, patch)
      const now = new Date()
      await this.dbSet('interlude_story', { id: story.id }, { setting, updatedAt: now })
-@@ -2035,8 +2070,27 @@
+@@ -2035,8 +2070,27 @@ export class InterludeService extends Service {
        sort: { updatedAt: 'desc' },
      })
    }
@@ -1124,7 +1134,7 @@
      return this.dbGet('interlude_intent', { storyId, status: 'pending' }, {
        limit: Math.max(1, Math.min(limit, 100)),
        sort: { notBefore: 'asc' },
-@@ -2067,12 +2121,13 @@
+@@ -2067,12 +2121,13 @@ export class InterludeService extends Service {
    async addAdminFact(story: InterludeStory, scope: NarrativeFact['scope'], content: string) {
      const text = clip(content, this.memoryConfig.factContentCharacters)
      if (!text || factContentLooksAmbiguous(scope, text)) return false
@@ -1139,7 +1149,7 @@
      })
      return true
    }
-@@ -2803,9 +2858,9 @@
+@@ -2803,9 +2858,9 @@ export class InterludeService extends Service {
        }
        const chatCapabilities = this.groupChatCapabilities(session, groupContext.messages)
        const userMessage = batch.map((message, index) => `[群聊连续消息 ${index + 1}｜${message.speaker}]\n${message.content}`).join('\n\n')
@@ -1150,7 +1160,7 @@
        const stickerCatalog = await this.stickerCatalogForSession(session, turnQueryEmbedding)
        const currentImageSources = Array.from(new Set(batch.flatMap(message => message.imageSources ?? []))).slice(0, 3)
        const imageSession = batch.find(message => message.imageSession)?.imageSession ?? session
-@@ -3063,8 +3118,12 @@
+@@ -3063,8 +3118,12 @@ export class InterludeService extends Service {
      return { platform: 'qq', quoteReply, reactions, nativeFaces, expressionThreshold: normalizeExpressionThreshold(config.expressionThreshold) }
    }
  
@@ -1163,7 +1173,7 @@
      if (!config?.enabled || !session || !isOneBotPlatform(session.platform) || !config.platforms?.includes('qq')) return undefined
      const nativeFaces = config.nativeFaces === true ? normalizeAllowedNativeFaces(config.allowedNativeFaces) : []
      if (!nativeFaces.length) return undefined
-@@ -3659,10 +3718,10 @@
+@@ -3659,10 +3718,10 @@ export class InterludeService extends Service {
          }) as StickerAsset | undefined
          if (updated && this.semanticStickerEmbeddingEnabled()) {
            // Index a freshly described asset immediately so the semantic filter
@@ -1176,7 +1186,7 @@
          this.reportStandaloneOperation('standard', 'info', '表情包描述完成 素材=%s 分组=%s', item.asset.assetId, item.asset.group)
        }
        await this.refreshStickerCatalog()
-@@ -3741,20 +3800,20 @@
+@@ -3741,20 +3800,20 @@ export class InterludeService extends Service {
     * batch stays small so one scan cannot spend more than a handful of calls. */
    private async backfillStickerEmbeddings() {
      if (!this.semanticStickerEmbeddingEnabled()) return
@@ -1202,7 +1212,7 @@
      return assets.map(asset => ({
        assetId: asset.assetId, group: asset.group, description: asset.description, aliases: Array.isArray(asset.aliases) ? asset.aliases : [], animated: asset.animated,
      }))
-@@ -3766,8 +3825,10 @@
+@@ -3766,8 +3825,10 @@ export class InterludeService extends Service {
    private async rankStickerAssets(turnQueryEmbedding?: number[]): Promise<StickerAsset[]> {
      const assets = this.stickerCatalog.slice(0, this.stickerConfig.catalogLimit)
      if (!this.config.model.embedding?.semanticStickerFilter) return assets
@@ -1213,7 +1223,7 @@
    }
  
    private semanticTurnEmbeddingEnabled() {
-@@ -3843,9 +3904,9 @@
+@@ -3843,9 +3904,9 @@ export class InterludeService extends Service {
      const identity = this.embedder?.identity?.()
      for (const [id, item] of cache) {
        if (excludeIds.has(id)) continue
@@ -1224,7 +1234,7 @@
        const spans = item.spans ??= indexOriginal(item.content)
        const lexical = Math.max(scoreOriginal(primaryKeys, spans).score, scoreOriginal(keys, spans).score * 0.8)
        const tagged = episodeTagScore(query, item.tags)
-@@ -3959,9 +4020,9 @@
+@@ -3959,9 +4020,9 @@ export class InterludeService extends Service {
      if (!batchSize || this.historyBackfills.has(storyId) || Date.now() < (this.historyBackoff.get(storyId) ?? 0)) return
      this.historyBackfills.add(storyId)
      const started = Date.now()
@@ -1235,7 +1245,7 @@
        const saved = decodeStoryState(story.state).extensions?.historyBackfill as { cursor?: number; identity?: string } | undefined
        let cursor = saved?.identity === identity && Number.isSafeInteger(saved?.cursor) ? Math.max(0, saved!.cursor!) : 0
        const [older, recent] = await Promise.all([
-@@ -3975,9 +4036,9 @@
+@@ -3975,9 +4036,9 @@ export class InterludeService extends Service {
        const fill = async (row: ScriptEntry) => {
          attempts++
          const embedding = await this.embedText(row.content)
@@ -1246,7 +1256,7 @@
            const [fresh] = await this.dbGet('interlude_script_entry', { storyId, id: row.id }) as ScriptEntry[]
            if (!fresh || fresh.content !== row.content) return
            await this.dbSet('interlude_script_entry', { storyId, id: row.id }, {
-@@ -4410,9 +4471,13 @@
+@@ -4410,9 +4471,13 @@ export class InterludeService extends Service {
        return false
      })
    }
@@ -1260,7 +1270,7 @@
      if (this.desktopRuntimePhase === 'paused') {
        // 已触发的定时器句柄若不清掉,resume 的 rescheduleTimers 会因 turn.timer
        // 非空而跳过补排,遗留消息重新孤儿化
-@@ -4427,8 +4492,13 @@
+@@ -4427,8 +4492,13 @@ export class InterludeService extends Service {
      if (!turn) return
      const requestId = revision
      turn.inFlightRequestId = requestId
@@ -1274,7 +1284,7 @@
      // 任何异常（日志/簿记）会让 endFlush 永不执行，turn 永久 in-flight 且批次
      // 已被消费：后续消息持续入队但永不进入模型调度，直到重启。try 提前到
      // splice 之后，finally 的 endFlush 覆盖全程；空批次早退交由 finally 收尾。
-@@ -4472,9 +4542,9 @@
+@@ -4472,9 +4542,9 @@ export class InterludeService extends Service {
        }
  
        const userMessage = formatBufferedUserMessages(batch)
@@ -1285,7 +1295,7 @@
        const quotedMessages: IndexedQuotedMessageContext[] = batch.flatMap((message, index) => message.quote
          ? [{ ...message.quote, messageIndex: index + 1 }]
          : [])
-@@ -4515,11 +4585,18 @@
+@@ -4515,11 +4585,18 @@ export class InterludeService extends Service {
              early.interaction = reply.interaction
              early.deliveryEntry = deliveryEntry
            }
@@ -1305,7 +1315,7 @@
          ? { ...narrative.decision, interaction: early.interaction }
          : narrative.decision
        const sticker = this.resolveSticker(decision.localMedia, stickerCatalog)
-@@ -4605,17 +4682,18 @@
+@@ -4605,17 +4682,18 @@ export class InterludeService extends Service {
            // 沉默期重发是常态，旧 retry 到期会再跑完整回合并重复投递一条回复。
            await this.cancelPendingNarrativeRetries(current, currentParticipant.id, now)
            const consumedDueIds = consumedLiveIntentIds(snapshot.due)
@@ -1325,7 +1335,7 @@
          this.reportOperation('standard', 'info', snapshot.story, 'user-message', '已丢弃过期主模型结果 参与者=%s 请求=%d 回队消息=%d', snapshot.participant.id, requestId, batch.length)
          return
        }
-@@ -4652,20 +4730,61 @@
+@@ -4652,20 +4730,61 @@ export class InterludeService extends Service {
          }
        }
        this.scheduleCompaction(turn.storyId)
@@ -1388,7 +1398,7 @@
  
    async advanceStory(story: InterludeStory, force = true) {
      if (this.desktopRuntimePhase === 'paused') return []
-@@ -5006,10 +5125,12 @@
+@@ -5006,10 +5125,12 @@ export class InterludeService extends Service {
              messages.push(...persisted.messages)
            }
            if (turnSucceeded && taskCurrent()) {
@@ -1402,7 +1412,7 @@
                delayedReplyProcessed = true
                await this.pauseAutomaticAdvanceAfterDelayedReply(story.id, now, dueParticipant?.id ?? '')
              } else if (!advanced && !delayedReplyProcessed) {
-@@ -5047,12 +5168,17 @@
+@@ -5047,12 +5168,17 @@ export class InterludeService extends Service {
      if (advanced && !delayedReplyProcessed) {
        const hasMoreFollowUps = dueFollowUps.length > 0 && await this.completeConversationFollowUps(story.id, now)
        if (!hasMoreFollowUps) await this.scheduleNextAutomaticAdvance(story.id, now)
@@ -1421,7 +1431,7 @@
      // 这里是主模型上下文的唯一入口。recentEntries 保留近距离质感，场景、弧线和
      // facts 负责把很长的过去压缩成连续性线索。参与者摘要让模型知道角色
      // 同时还在与谁维系关系，而不是把每个 QQ 当成独立世界。
-@@ -5065,9 +5191,9 @@
+@@ -5065,9 +5191,9 @@ export class InterludeService extends Service {
      const memoryEnabled = this.memoryConfig.enabled
      // One turn-level query vector serves every semantic consumer (sticker
      // filter, fact ranking, history recall); undefined when none needs it.
@@ -1432,7 +1442,7 @@
      const liveFactEmbedding = this.config.model.embedding?.liveQuery ? resolvedTurnEmbedding : undefined
      const [recentEntries, memories, scene, arc, previousScenes, facts, allParticipants, webContext, activeConsequences, overlaySnapshots, followUpCommitments, upcomingIntents] = await Promise.all([
        // Use the runtime limits on the live path.  They are the options shown
-@@ -5076,9 +5202,9 @@
+@@ -5076,9 +5202,9 @@ export class InterludeService extends Service {
        memoryEnabled ? this.memories(story.id, this.config.runtime.memoryLimit, participant?.id) : Promise.resolve([]),
        this.activeScene(story.id),
        this.activeArc(story.id),
@@ -1443,7 +1453,7 @@
        this.webObservations(story.id, participant?.id),
        this.activeConsequencesAndExpire(
          story.id,
-@@ -5208,9 +5334,11 @@
+@@ -5208,9 +5334,11 @@ export class InterludeService extends Service {
        windowHasWorldEventEntries,
        windowHasAdminNotes,
      })
@@ -1455,7 +1465,7 @@
        writingOptions: {
          messageSeparator: this.config.runtime.messageSeparator?.trim() || '<sep/>',
          splitReplyMessages: this.config.runtime.splitReplyMessages !== false,
-@@ -5361,9 +5489,9 @@
+@@ -5361,9 +5489,9 @@ export class InterludeService extends Service {
          ? decodedState.automaticDeliverySummaries
          : [],
        followUpCommitments,
@@ -1466,7 +1476,7 @@
      // script 对象形态归一（rc50 issue 报告）：必须在 no-usable-script 闸门
      // (tryDecide:5465) 之前——归一后 script 恒为字符串,闸门与 normalizeDecision 自然通过。
      const normalizedScript = normalizeScriptField((narrated as { script?: unknown })?.script)
-@@ -5490,9 +5618,9 @@
+@@ -5490,9 +5618,9 @@ export class InterludeService extends Service {
        this.reportOperation('diagnostic', 'debug', story, phase, '时间导演冷却状态持久化失败，将继续使用内存冷却 错误=%s', error)
      }
    }
@@ -1477,7 +1487,7 @@
      let effectiveNow = now
      const automaticPhase = phase === 'advance' || phase === 'conversation-follow-up' || phase === 'intent-due'
      const shortSchedule = automaticPhase && phase !== 'advance' && this.schedulePreplanConfig.enabled
-@@ -5518,15 +5646,16 @@
+@@ -5518,15 +5646,16 @@ export class InterludeService extends Service {
        '模型调用开始 任务=主叙事 模型=%s 参与者=%s 时间段=%s→%s 到期计划=%d',
        this.mainModelLabel(), participant?.id || '全局', formatLogTime(from, story.setting.timezone), formatLogTime(now, story.setting.timezone), dueIntents.length)
      try {
@@ -1496,7 +1506,7 @@
          ? decision.browserIntents?.map(intent => normalizeBrowserIntentDraft(intent, this.browserConfig)).find(intent => intent?.timing === 'immediate')
          : undefined
        if (immediate) {
-@@ -5537,20 +5666,21 @@
+@@ -5537,20 +5666,21 @@ export class InterludeService extends Service {
          this.reportOperation('standard', 'info', story, phase, '即时网页观察开始 模式=%s', immediate.mode)
          const observation = await this.collectWebObservation(story, immediate, participant.id, null, new Date(), false)
          immediateObservations = [observation]
@@ -1520,7 +1530,7 @@
          // 让下一次"结构化可见回复缺失"可以直接从日志定位是模型行为还是解析问题。
          if (initialVisibleRecovery) {
            this.reportOperation('diagnostic', 'warn', story, phase, '被抛弃草稿的结构化回复字段 interaction=%s groupReply=%s',
-@@ -5564,9 +5694,9 @@
+@@ -5564,9 +5694,9 @@ export class InterludeService extends Service {
          // Fix 5：structureMissing 在首稿就计数（进入恢复重写即视为"发生了一次
          // 缺失"）；recoverySaved 在恢复稿通过校验后才计数（不是进入恢复就计）。
          if (initialVisibleRecovery) this.health?.recordStructureMissing(story.id)
@@ -1531,13 +1541,11 @@
          if (recoveredTimeOverflow) throw new Error(`Narrative provider crossed the live time boundary after one recovery attempt: ${recoveredTimeOverflow}`)
          // 恢复成功 = 第二稿不再需要回复恢复。
          if (initialVisibleRecovery && !requiresVisibleReplyRecovery(phase, groupContext, decision) && !recoveredTimeOverflow) {
-@@ -5582,8 +5712,19 @@
-             decision = { ...decision, interaction: undefined, groupReply: undefined }
-           } else {
+@@ -5584,8 +5714,19 @@ export class InterludeService extends Service {
              throw new Error('Narrative provider omitted the required visible-reply structure after one recovery attempt.')
            }
-+        }
-+      }
+         }
+       }
 +      if (phase === 'user-message' && !groupContext) {
 +        const issue = scheduledContactIssue(decision, userMessage ?? '', now, story.setting.timezone, this.config.runtime)
 +        if (issue) {
@@ -1547,11 +1555,13 @@
 +        } else if (!decision.followUpCommitment && decision.interaction?.reply.mode === 'immediate') {
 +          const inferred = classifyFollowUp(decision.interaction.reply.content, now, story.setting.timezone, userMessage, this.config.runtime.minimumFollowUpCommitmentSeconds)
 +          if (inferred) decision = { ...decision, followUpCommitment: inferred }
-         }
-       }
++        }
++      }
        // The fixed narrative contract requires prose for every real model turn.
        // A syntactically valid object with an omitted/blank script used to be
-@@ -5767,18 +5908,26 @@
+       // treated as success, advancing the cursor while leaving a gap in the
+       // life record. Treat it like a provider failure so live user turns use
+@@ -5767,18 +5908,26 @@ export class InterludeService extends Service {
        }
      }
      let scriptEntry: ScriptEntry | undefined
@@ -1581,7 +1591,7 @@
        scriptEntry = await this.appendEntry(
          story.id,
          scriptEntryDraftForCommit(commit, decision.interaction ?? null, timelinePlan, decision.lifeHandoff),
-@@ -5786,16 +5935,23 @@
+@@ -5786,16 +5935,23 @@ export class InterludeService extends Service {
          participant?.id ?? '',
        )
      }
@@ -1606,7 +1616,7 @@
          ...intent,
          payload: phase === 'user-message' && participant
            ? { ...payload, userInitiated: payload.userInitiated !== false }
-@@ -5881,8 +6037,34 @@
+@@ -5881,8 +6037,34 @@ export class InterludeService extends Service {
            validSourceEntryIds,
            scriptEntry?.id,
          )
@@ -1641,7 +1651,7 @@
            const target = allParticipants.find(item => item.id === agencyCandidate!.participantId)
            // 联系温度：natural/balanced 只放宽意愿阈值与安全间隔；Urge 爆发间隔
            // 仍优先；容量门（设备/隐私/负荷）三模式全保——想聊天也需要手机和隐私。
-@@ -5901,9 +6083,9 @@
+@@ -5901,9 +6083,9 @@ export class InterludeService extends Service {
              target?.state.lastCharacterMessageAt,
            )
            const willingness = agencyCandidate.willingness ?? 0
@@ -1652,7 +1662,7 @@
            const dailyCap = Math.max(0, this.agencyConfig.proactiveDailyCap ?? 3)
            const capPasses = dailyCap <= 0 || countProactiveContactsInWindow(state.proactiveContactLog, agencyCandidate.participantId, now) < dailyCap
            // M3/M4 endpoint policy belongs to the Agency decision boundary as
-@@ -6032,8 +6214,9 @@
+@@ -6032,8 +6214,9 @@ export class InterludeService extends Service {
          payload: {
            content: interaction.reply.content,
            ...(delayedEndpointId ? { endpointId: delayedEndpointId } : {}),
@@ -1662,7 +1672,7 @@
            ...(commit
                ? scriptEventPayload(attachMessageEvent(
                    { participantId: participant.id, content: interaction.reply.content, ...(delayedEndpointId ? { endpointId: delayedEndpointId } : {}) },
-@@ -6042,8 +6225,12 @@
+@@ -6042,8 +6225,12 @@ export class InterludeService extends Service {
                  ))
              : {}),
          },
@@ -1675,7 +1685,7 @@
      }
  
      // A cross-account message is itself proactive from the target's point of
-@@ -6074,8 +6261,9 @@
+@@ -6074,8 +6261,9 @@ export class InterludeService extends Service {
          const reason = !this.agencyConfig.enabled
            ? 'proactive-messages-not-allowed'
            : agencyBlockReason ?? (agencyCandidate ? 'not-selected-by-agency' : 'no-agency-candidate')
@@ -1685,7 +1695,7 @@
        // 解析层丢弃补偿：意愿门丢掉的主动行动从未生成事件（commit 构建在
        // 归一化之后），无账本可撤——只补"从未发送"历史条目。不传 commit，
        // 避免按内容反查时误撤同参与者存活行动的账本分段。
-@@ -6116,8 +6304,9 @@
+@@ -6116,8 +6304,9 @@ export class InterludeService extends Service {
            : !agencyAllowsSend
              ? agencyBlockReason ?? (agencyCandidate ? 'not-selected-by-agency' : 'no-agency-candidate')
              : 'proactive-delayed-reply-not-scheduled'
@@ -1695,7 +1705,7 @@
      }
      const approvedAutomaticOutgoingActions = phase === 'advance'
        ? crossActions
-@@ -6211,8 +6400,16 @@
+@@ -6211,8 +6400,16 @@ export class InterludeService extends Service {
      // 长线指导：剧本提交成功后异步扫描（不阻塞主回合）。DB 抖动沿浮动
      // promise 逃逸会变成 unhandledRejection，必须就地吸收。
      void this.longHorizonSweep(story, now).catch(error =>
@@ -1712,7 +1722,7 @@
    }
  
    /** Keep the active-scene anchor in sync with the host ledger immediately,
-@@ -6467,9 +6664,9 @@
+@@ -6467,9 +6664,9 @@ export class InterludeService extends Service {
    }
  
    /** Durable facts are global narrative evidence. The legacy participantId argument
@@ -1723,7 +1733,7 @@
      // the facts table, even when the narrator only needed a handful of facts.
      // Keep enough candidates for semantic re-ranking without making the
      // latency-sensitive path do unnecessary database work.
-@@ -6492,15 +6689,15 @@
+@@ -6492,15 +6689,15 @@ export class InterludeService extends Service {
      // Live embedding adds an extra HTTP request to every user turn. Keep it
      // opt-in; stored fact vectors and background backfill still work normally.
      // A precomputed turn-level vector is preferred when the caller already
@@ -1743,7 +1753,7 @@
          || b.fact.updatedAt.getTime() - a.fact.updatedAt.getTime()
          || b.fact.id - a.fact.id)
        .map(item => item.fact)
-@@ -6515,9 +6712,26 @@
+@@ -6515,9 +6712,26 @@ export class InterludeService extends Service {
        seen.add(fact.id)
        selected.push(fact)
        if (selected.length >= limit) break
@@ -1771,7 +1781,7 @@
  
    /** Returns only observations that are safe for this narration branch. A
     * participant's browsing is not shown to another private participant unless
-@@ -6757,14 +6971,14 @@
+@@ -6757,14 +6971,14 @@ export class InterludeService extends Service {
      })
    }
  
@@ -1789,7 +1799,7 @@
      await this.appendEntry(storyId, {
        kind: 'web-observation', actor: 'system',
        content: webObservationEntryContent(observation), occurredAt: now.toISOString(),
-@@ -6889,8 +7103,9 @@
+@@ -6889,8 +7103,9 @@ export class InterludeService extends Service {
        if (due.every(intent => intent.type === 'split-message')) return
      }
      if (this.sweepRunning || this.hasPendingNarrative(storyId)) return 'busy'
@@ -1799,7 +1809,7 @@
  
    private async reconcileTerminalSplitIntent(storyId: string, intent: NarrativeIntent, now: Date) {
      const ref = restoreMessageEvent(intent.payload, String(intent.payload?.content ?? ''))
-@@ -6952,13 +7167,14 @@
+@@ -6952,13 +7167,14 @@ export class InterludeService extends Service {
      return ready
    }
  
@@ -1818,7 +1828,7 @@
  
    /** Deliver already-decided <sep/> segments without invoking the narrator. */
    private async deliverDueSplitSegments(storyId: string) {
-@@ -7094,8 +7310,9 @@
+@@ -7094,8 +7310,9 @@ export class InterludeService extends Service {
      const duplicate = pending.find(intent => normalizeFollowUpSummary(intent.summary) === key)
      if (duplicate || pending.length >= 2) {
        this.reportOperation('diagnostic', 'debug', story, 'user-message',
@@ -1828,7 +1838,7 @@
      }
      const sourceEntryIds = [
        ...(draft.sourceEntryIds ?? []).filter(id => Number.isSafeInteger(id) && id > 0),
-@@ -7108,8 +7325,12 @@
+@@ -7108,8 +7325,12 @@ export class InterludeService extends Service {
          kind: draft.kind, sourceEntryIds, expiresAt: expiresAt.toISOString(),
          requiresVisibleOutcome: true, userInitiated: true, originDeliveryEventId,
        },
@@ -1841,7 +1851,7 @@
      this.reportOperation('standard', 'info', story, 'user-message',
        '已登记承诺回访 参与者=%s 类型=%s 到期=%s', participantId, draft.kind, formatLogTime(new Date(draft.notBefore), story.setting.timezone))
    }
-@@ -7245,9 +7466,9 @@
+@@ -7245,9 +7466,9 @@ export class InterludeService extends Service {
      try {
        const intents = await this.dbGet('interlude_intent', { storyId, participantId, status: 'pending' })
        const matching = intents.filter(intent => intent.participantId === participantId && (
@@ -1852,7 +1862,7 @@
        if (!matching.length) return matching
  
        await this.dbSet('interlude_intent', { id: { $in: matching.map(intent => intent.id) } }, {
-@@ -7618,9 +7839,11 @@
+@@ -7618,9 +7839,11 @@ export class InterludeService extends Service {
          if (this.config.logging?.logMessageContent) {
            this.report('info', story, 'intent-due', '主角消息内容：%s', message.content.slice(0, this.config.logging.previewLength))
          }
@@ -1865,7 +1875,7 @@
            // 即时会话投递成功同样刷新端点状态（与 bot/desktop 路径一致）。
            this.noteEndpointOutbound({ kind: 'participant-user', id: target.id }, true, 'session-delivered', address)
            delivered.push(message)
-@@ -7678,9 +7901,11 @@
+@@ -7678,9 +7901,11 @@ export class InterludeService extends Service {
            this.report('warn', story, 'intent-due', '没有可用机器人账号投递消息 参与者=%s', target.id)
            if (recordFailures) await this.recordOutgoingDeliveryFailure(story, target.id, message, 'bot-not-found', failureStatus)
            continue
@@ -1878,7 +1888,7 @@
          this.noteEndpointOutbound({ kind: 'participant-user', id: target.id }, true, endpoint ? 'endpoint-explicit' : 'private-delivered', address)
          delivered.push(message)
        } catch (error) {
-@@ -7803,8 +8028,41 @@
+@@ -7803,8 +8028,41 @@ export class InterludeService extends Service {
        }, now, participantId)
      })
    }
@@ -1920,7 +1930,7 @@
     * 并追加明确的"从未发送"历史条目。deliveryReality 会把 cancelled 标注为
     * withdrawn，后续轮次的模型才能区分"想发"与"已发出"。 */
    private async recordWithdrawnOutgoingEvents(
-@@ -7890,10 +8148,19 @@
+@@ -7890,10 +8148,19 @@ export class InterludeService extends Service {
          ? metadata.deliveryActions.find(action => isRecord(action) && action.commitId === reference.commitId && action.eventId === reference.eventId && action.status === 'delivered') : undefined
        const events = Array.isArray(metadata.scriptEvents) ? metadata.scriptEvents : []
        const event = events.find(item => isRecord(item) && item.commitId === reference.commitId && item.eventId === reference.eventId && item.kind === 'outgoing-message')
@@ -1941,7 +1951,7 @@
            await this.applyFollowUpResolutions(storyId, event.participantId, resolutions,
              { seen: false, reply: { mode: 'immediate', content: event.content } }, at, event.eventId)
            if (commitment) await this.appendFollowUpCommitment(await this.getStory(storyId), event.participantId, commitment, entry.id, at, event.eventId)
-@@ -9080,8 +9347,12 @@
+@@ -9080,8 +9347,12 @@ export class InterludeService extends Service {
      // 与入站重定向找到；archived 由 migrateLegacyStory 迁移时单独登记。
      const stories = (await this.dbGet('interlude_story', { status: { $in: ['active', 'paused'] } })) as any[]
      for (const story of stories) {
@@ -1954,7 +1964,7 @@
          if (rule.enabled !== false) addDraft(deriveGroupEndpoint({ id: String(story.id), platform: String(story.platform ?? 'onebot'), selfId: String(story.selfId) }, rule, now))
        }
      }
-@@ -9258,16 +9529,22 @@
+@@ -9258,16 +9529,22 @@ export class InterludeService extends Service {
  
    /** 注册一个角色端点到既有故事（幂等；accountKey 被其他故事占用时拒绝）。
     * 经写队列串行执行——并发 add 不会双双重叠冲突检查；落库失败
@@ -1978,12 +1988,11 @@
          if (conflict.ownerId === story.id) return { ok: true, endpointId: conflict.id, error: '该账号已注册为本故事端点。' }
          return { ok: false, error: `账号 ${account} 已被故事 ${conflict.ownerId} 注册（唯一键 role:${accountKey}）。` }
        }
-@@ -9560,8 +9837,19 @@
- 
+@@ -9561,8 +9838,19 @@ export class InterludeService extends Service {
    // ── 世界事件播种器：生成回路 + 到期排水 ─────────────────────────────────
    // 事实权威、反应自由（docs/WORLD_EVENT_SEEDER_DESIGN.md）：事件条目是既成
    // 现实，她如何感知与应对由主作者书写。注册参与者严格拉黑；只允许线下通道。
-+
+ 
 +  /** Android host drains connector snapshots before disposing the database. */
 +  async mobileDrainBeforeStop() {
 +    await this.setDesktopRuntimePhase('paused')
@@ -1994,11 +2003,12 @@
 +    await this.endpointStateWriteQueue
 +    await this.databaseWriteQueue
 +  }
- 
++
    async stop() {
      this.disposed = true
      this.weatherTimer?.()
-@@ -9705,9 +9993,9 @@
+     this.weatherTimer = undefined
+@@ -9705,9 +9993,9 @@ export class InterludeService extends Service {
        .map(entry => ({ kind: entry.kind, at: entry.occurredAt.toISOString(), text: entry.content.slice(0, 240) }))
      const month = Number(new Intl.DateTimeFormat('en-US', { month: 'numeric', timeZone: story.setting.timezone }).format(now))
      const season = month >= 3 && month <= 5 ? 'spring' : month >= 6 && month <= 8 ? 'summer' : month >= 9 && month <= 11 ? 'autumn' : 'winter'
@@ -2009,7 +2019,7 @@
        nowLocal: new Intl.DateTimeFormat('en-US', { dateStyle: 'full', timeStyle: 'short', timeZone: story.setting.timezone }).format(now),
        timezone: story.setting.timezone,
        season,
-@@ -10636,9 +10924,9 @@
+@@ -10636,9 +10924,9 @@ export class InterludeService extends Service {
      }
    }
  
@@ -2020,7 +2030,7 @@
      const generation = this.taskGeneration(storyId)
      const existing = await this.dbGet('interlude_fact', { storyId, status: 'active' })
      for (const draft of decision.facts) {
-@@ -10647,17 +10935,20 @@
+@@ -10647,17 +10935,20 @@ export class InterludeService extends Service {
          || factContentLooksAmbiguous(draft.scope, content)) continue
        const key = normalizeFact(content)
        if (vectors.has(key)) continue
@@ -2044,7 +2054,7 @@
      const prepared = factEmbeddings ?? await this.prepareCompactionEmbeddings(story.id, decision, entries)
      const commit = async () => {
        if (this.databaseResetting || this.taskGeneration(story.id) !== generation) throw new Error('Compaction generation is obsolete')
-@@ -10675,9 +10966,9 @@
+@@ -10675,9 +10966,9 @@ export class InterludeService extends Service {
      })
      this.scheduleFactEmbeddingBackfill(story.id)
    }
@@ -2055,7 +2065,7 @@
      if (!entries.length) return
      for (const draft of decision.episodeTags ?? []) {
        const source = entries.find(entry => entry.id === draft.sourceEntryId)
-@@ -10797,9 +11088,9 @@
+@@ -10797,9 +11088,9 @@ export class InterludeService extends Service {
        const knowledge = normalizeKnowledgeEvidence(fact.knowledge, entries, fact.sourceEntryIds ?? [])
        const resolved = supportsRecordedOutcome(knowledge)
          ? await this.resolveCompactionFacts(story.id, fact.resolvesFactIds, visibleFactIds, now) : false
@@ -2066,7 +2076,7 @@
      }
      for (const patch of decision.statePatches ?? []) {
        if (!hasCompactionEvidence(patch.sourceEntryIds, entries)) {
-@@ -10856,9 +11147,12 @@
+@@ -10856,9 +11147,12 @@ export class InterludeService extends Service {
        if (nextScene) await this.dbSet('interlude_scene', { id: nextScene.id }, { lastEntryId: entries.at(-1)!.id })
      }
    }
@@ -2080,7 +2090,7 @@
      if (!content) return false
      // Durable facts are global narrative evidence. Ignore the legacy model
      // participantId field and persist new facts with an empty compatibility value.
-@@ -10878,17 +11172,19 @@
+@@ -10878,17 +11172,19 @@ export class InterludeService extends Service {
        ?? matching.find(fact => !fact.knowledge && canClose)
      const unresolved = draft.unresolved === true || (draft.scope === 'promise' && (draft.unresolved !== false || !canClose))
      if (same && ((same.knowledge?.mode ?? 'unclassified') === knowledge.mode || !same.knowledge && canClose)) {
@@ -2102,7 +2112,7 @@
          knowledge: { ...knowledge, clauses: [...new Map([...(same.knowledge?.clauses ?? []), ...knowledge.clauses].map(clause => [JSON.stringify(clause), clause])).values()].slice(-12),
            relatedFactIds: [...new Set([...(same.knowledge?.relatedFactIds ?? []), ...knowledge.relatedFactIds])].slice(-12) },
        })
-@@ -10900,17 +11196,25 @@
+@@ -10900,17 +11196,25 @@ export class InterludeService extends Service {
      }
      await this.dbCreate('interlude_fact', {
        storyId, participantId, scope: draft.scope, content, knowledge, importance: clampNumber(draft.importance, 0.5, 0, 1),
@@ -2131,7 +2141,7 @@
        // Embeddings improve recall but must never make a private-message turn fail.
        this.reportStandaloneOperation('diagnostic', 'debug', 'Embedding 请求跳过 错误=%s', error)
        return []
-@@ -10934,16 +11238,16 @@
+@@ -10934,16 +11238,16 @@ export class InterludeService extends Service {
      const generation = this.taskGeneration(storyId)
      if (!this.taskGenerationCurrent(storyId, generation)) return
      const facts = await this.dbGet('interlude_fact', { storyId, status: 'active' })
@@ -2151,7 +2161,7 @@
    }
  
    private async persistStatePatch(story: InterludeStory, draft: StatePatchDraft, entries: ScriptEntry[], now: Date) {
-@@ -12458,16 +12762,17 @@
+@@ -12458,16 +12762,17 @@ function followUpExpiresAt(value: unknown, now: Date) {
    if (!requested || requested <= now) return maximum
    return requested < maximum ? requested : maximum
  }
@@ -2172,7 +2182,7 @@
      ? value.sourceEntryIds.filter(id => typeof id === 'number' && Number.isSafeInteger(id) && id > 0).slice(0, 4)
      : []
    const expiresAt = toDate(value.expiresAt)
-@@ -12477,12 +12782,102 @@
+@@ -12477,12 +12782,102 @@ function normalizeFollowUpCommitment(value: unknown, now: Date): FollowUpCommitm
      ...(sourceEntryIds.length ? { sourceEntryIds } : {}),
    }
  }
@@ -2277,7 +2287,7 @@
  }
  
  function interactionPromisesFollowUp(content: unknown) {
-@@ -12578,8 +12973,9 @@
+@@ -12578,8 +12973,9 @@ export function normalizeDecision(raw: NarrativeDecision, from: Date, now: Date,
    const script = normalizeScriptField(raw?.script).trim().slice(0, runtime.maxScriptCharacters)
    // The only channel for a private reply is interaction. Automatic life
    // passes have no live participant event, so they cannot emit it at all.
@@ -2287,7 +2297,7 @@
    // let a model turn an invented online contact into durable retrieval data.
    const memories = Array.isArray(raw?.memories)
      ? raw.memories.filter(validMemory).map(memory => ({ ...memory, participantId: permittedOrGlobal(memory.participantId, currentParticipantId, permittedParticipantIds) }))
-@@ -12627,9 +13023,9 @@
+@@ -12627,9 +13023,9 @@ export function normalizeDecision(raw: NarrativeDecision, from: Date, now: Date,
    const alter = normalizeAlterValue(raw?.alter)
    const automaticDeliverySummary = isAutomaticNarrativePhase(phase)
      ? normalizeAutomaticDeliverySummary(raw?.automaticDeliverySummary) || undefined
@@ -2298,7 +2308,7 @@
      ? normalizeFollowUpResolutions(raw?.followUpResolutions)
      : []
    const agencyWindow = isRecord(raw?.agencyWindow) ? raw.agencyWindow : undefined
-@@ -12755,9 +13151,9 @@
+@@ -12755,9 +13151,9 @@ export function normalizeInteraction(value: unknown, now: Date, runtime: Runtime
    if (!content) return { seen, reply: { mode: 'none' } }
    if (mode === 'immediate') return { seen, reply: { mode: 'immediate', content } }
    const delay = sendAt?.getTime() - now.getTime()
@@ -2309,7 +2319,7 @@
  
  function validMemory(value: unknown): value is MemoryDraft {
    return isRecord(value) && typeof value.category === 'string' && typeof value.content === 'string' && !!value.content.trim()
-@@ -13058,15 +13454,15 @@
+@@ -13058,15 +13454,15 @@ function limitEntriesByCharacters(entries: ScriptEntry[], limit: number) {
    }
    return selected
  }
@@ -2327,7 +2337,7 @@
    // unrelated fact from receiving a half-score merely because cosine values
    // mathematically range from -1 to 1.
    const semantic = similarity == null ? 0 : Math.max(0, similarity)
-@@ -13103,15 +13499,14 @@
+@@ -13103,9 +13499,9 @@ function lexicalRecallKeys(text: string) {
    return Array.from(new Set([...words, ...bigrams])).slice(0, 80)
  }
  
@@ -2338,12 +2348,8 @@
    let leftMagnitude = 0
    let rightMagnitude = 0
    for (let index = 0; index < left.length; index++) {
-     dot += left[index] * right[index]
---- a/types.ts
-     leftMagnitude += left[index] * left[index]
-     rightMagnitude += right[index] * right[index]
-   }
-   if (!leftMagnitude || !rightMagnitude) return undefined
+diff --git a/turn-engine.ts b/turn-engine.ts
+index a69c3cf..8d971fb 100644
 --- a/turn-engine.ts
 +++ b/turn-engine.ts
 @@ -9,8 +9,9 @@
@@ -2356,7 +2362,7 @@
    occurredAt: Date
    /** Registered inbound endpoint for deterministic batch attribution. */
    endpointId?: string
-@@ -28,8 +29,9 @@
+@@ -28,8 +29,9 @@ export interface BufferedNarrativeTurn {
    timer?: () => void
    nextRevision: number
    inFlightRequestId?: number
@@ -2366,7 +2372,7 @@
    /** Requests invalidated by an administrative reset/purge must not be requeued. */
    discardedRequestIds?: Set<number>
    /** M2 §1.3：本回合涉及端点按接收序号有序；空 = 未解析（单端点等价）。 */
-@@ -114,13 +116,13 @@
+@@ -114,13 +116,13 @@ export function createTurnEngine(deps: TurnEngineDeps): TurnEngine {
      const turn: BufferedNarrativeTurn = existing ?? {
        storyId: story.id, participantId: participant.id, messages: [], nextRevision: 0,
        obsoleteRequestIds: new Set(), discardedRequestIds: new Set(), sources: [],
@@ -2382,7 +2388,7 @@
      turn.latestSession = session
      if (turn.timer) turn.timer()
      const revision = ++turn.nextRevision
-@@ -131,9 +133,9 @@
+@@ -131,9 +133,9 @@ export function createTurnEngine(deps: TurnEngineDeps): TurnEngine {
    }
  
    function signalIncomingInterruption(story: InterludeStory, participant: InterludeParticipant) {
@@ -2393,7 +2399,7 @@
      deps.reportOperation('standard', 'info', story, 'user-message',
        '新消息到达且首条回复尚未提交，放弃旧请求 参与者=%s 请求=%d', participant.id, turn.inFlightRequestId)
    }
-@@ -165,8 +167,9 @@
+@@ -165,8 +167,9 @@ export function createTurnEngine(deps: TurnEngineDeps): TurnEngine {
      if (!turn) return
      if (turn.inFlightRequestId === requestId) {
        turn.inFlightRequestId = undefined
@@ -2403,9 +2409,11 @@
        // before a pending replacement batch or an automatic continuation can
        // reuse the same turn owner.
        turn.activeSources = undefined
+diff --git a/types.ts b/types.ts
+index 64e0bdd..8b181e1 100644
 --- a/types.ts
 +++ b/types.ts
-@@ -493,8 +493,9 @@
+@@ -493,8 +493,9 @@ export interface NarrativeFact {
    importance: number
    confidence: number
    unresolved: boolean
@@ -2415,7 +2423,7 @@
    sourceEntryIds: number[]
    lastSeenAt: Date
    createdAt: Date
-@@ -555,8 +556,10 @@
+@@ -555,8 +556,10 @@ export interface IntentUpdateDraft {
    status: 'completed' | 'cancelled'
    resolution?: string
  }
@@ -2426,7 +2434,7 @@
    content: string
    /** Optional typ-0 correlation copied into persisted delayed/split intents. */
    traceId?: string
-@@ -614,31 +617,32 @@
+@@ -614,31 +617,32 @@ export interface NarrativeInteraction {
      mode: InteractionReplyMode
      content?: string
      actionId?: string
@@ -2464,7 +2472,7 @@
    online: boolean
  }
  
-@@ -655,9 +659,10 @@
+@@ -655,9 +659,10 @@ export type NativeFaceSemantic = 'smile' | 'laugh' | 'sweat' | 'awkward' | 'hear
  
  /** Capabilities are transient and appear in a prompt only after both Console
   * configuration and a live platform connector allow them. */
@@ -2476,7 +2484,7 @@
    reactions: ChatReactionName[]
    nativeFaces?: NativeFaceSemantic[]
    expressionThreshold?: number
-@@ -700,8 +705,9 @@
+@@ -700,8 +705,9 @@ export interface StickerAsset {
    aliases: string[]
    status: 'pending' | 'active' | 'missing'
    /** Optional semantic vector for catalog filtering; empty until the Embedding backfill reaches this asset. */
@@ -2486,7 +2494,7 @@
    updatedAt: Date
  }
  
-@@ -716,9 +722,9 @@
+@@ -716,9 +722,9 @@ export interface QuotedMessageContext {
  export interface IndexedQuotedMessageContext extends QuotedMessageContext {
    messageIndex: number
  }
@@ -2497,7 +2505,7 @@
  /** A user-facing promise to return with an answer; persisted as an existing intent row. */
  export interface FollowUpCommitmentDraft {
    kind: FollowUpCommitmentKind
-@@ -782,8 +788,10 @@
+@@ -782,8 +788,10 @@ export interface NarrativeDecision {
    /** At most one validated reaction is executed in the current implementation. */
    messageReactions?: MessageReactionDraft[]
    /** Exact local sticker selected from the transient catalog for this live turn. */
@@ -2508,7 +2516,7 @@
    nativeFace?: NativeFaceDraft
  }
  
-@@ -842,8 +850,11 @@
+@@ -842,8 +850,11 @@ export interface NarrativeContractFeatures {
    adminNotes: boolean
  }
  
@@ -2520,7 +2528,7 @@
    /** 合约自动拼装：按功能开关与窗口数据裁剪系统合约板块；缺省 = 完整合约。 */
    contractFeatures?: NarrativeContractFeatures
    contactThreads?: import('./script/knowledge-evidence').ContactEvidenceThread[]
-@@ -935,8 +946,9 @@
+@@ -935,8 +946,9 @@ export interface NarrativeRequest {
    /** Only the next twelve hours of Schedule Preplan are exposed to narration. */
    schedulePreplan?: SchedulePreplanWindow | null
    /** Ephemeral transport callback; never serialised into the model payload. */
@@ -2530,7 +2538,7 @@
    workingDetails?: WorkingDetail[]
    /** Older moments semantically related to the current message; private live turns only. */
    recalledHistory?: RecalledMoment[]
-@@ -1181,9 +1193,9 @@
+@@ -1181,9 +1193,9 @@ export interface NarrativeCompactor {
  }
  
  export interface NarrativeEmbedder {
@@ -2541,9 +2549,11 @@
  
  // ========== Alter System Types ==========
  
+diff --git a/weather.ts b/weather.ts
+index 4cd36cf..64aa16e 100644
 --- a/weather.ts
 +++ b/weather.ts
-@@ -79,8 +79,10 @@
+@@ -79,8 +79,10 @@ interface CacheEntry { snapshot: WeatherSnapshot; cachedAt: number; city?: strin
  const snapshotCache = new Map<string, CacheEntry>()
  const geoCache = new Map<string, { lat: number; lon: number; name: string; cachedAt: number }>()
  
@@ -2554,7 +2564,7 @@
  // ── 地理编码 ─────────────────────────────────────────────────────────────────
  
  async function geocode(ctx: Context, city: string): Promise<{ lat: number; lon: number; name: string } | undefined> {
-@@ -121,18 +123,21 @@
+@@ -121,18 +123,21 @@ export async function fetchWeatherSnapshot(
    if (config.autoFromLocation && locationHint?.trim()) {
      const geo = await geocode(ctx, locationHint)
      if (geo) {
@@ -2565,9 +2575,9 @@
      }
      // 地理编码失败时回退到手动经纬度(下面用手动 key)
    }
-+
-+  if (cacheKey.startsWith('manual:')) status = { state: 'fetching', source: config.autoFromLocation ? '地点未解析，使用手动坐标' : '手动坐标', latitude: lat, longitude: lon }
  
++  if (cacheKey.startsWith('manual:')) status = { state: 'fetching', source: config.autoFromLocation ? '地点未解析，使用手动坐标' : '手动坐标', latitude: lat, longitude: lon }
++
    const cached = snapshotCache.get(cacheKey)
    // TTL 取 cadence 的 90%：TTL==sweep 周期时,首次拉取耗时使下一轮 sweep
    // 必定命中缓存(年龄 C-f < C),实际刷新率减半。留 10% 余量保证每轮都拉新。
@@ -2578,7 +2588,7 @@
    try {
      const data = await ctx.http.get('https://api.open-meteo.com/v1/forecast', {
        params: {
-@@ -142,9 +147,9 @@
+@@ -142,9 +147,9 @@ export async function fetchWeatherSnapshot(
        },
        timeout: 10_000,
      }) as { current?: Record<string, number> }
@@ -2589,7 +2599,7 @@
      const condition = weatherCode !== undefined ? WMO_CODES[weatherCode] ?? `天气码${weatherCode}` : '未知天气'
      const snapshot: WeatherSnapshot = {
        temperature: Math.round(cur.temperature_2m),
-@@ -155,10 +160,11 @@
+@@ -155,10 +160,11 @@ export async function fetchWeatherSnapshot(
        fetchedAt: Date.now(),
        text: `环境：${Math.round(cur.temperature_2m)}°C ${condition}。`,
      }
@@ -2602,7 +2612,7 @@
  
  /** 架空世界判定(手动开关语义下与 weatherSweep 共用的唯一权威拷贝)：
   * 命中即跳过实况天气注入;播种器据此反过来保留天气播种(那些世界里模型
-@@ -168,11 +174,17 @@
+@@ -168,11 +174,17 @@ export function isFantasyStory(world: unknown, location: unknown): boolean {
    return /异世界|精灵|架空|幻想|另一个世界/.test(text)
  }
  

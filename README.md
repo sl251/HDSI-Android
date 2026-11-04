@@ -56,13 +56,13 @@ https://github.com/user-attachments/assets/809470b8-84a5-4e32-ac78-d59d217fac7b
 
 ## 📥 下载安装
 
-**当前文档对应版本：`0.1.0-preview.9.7`**。如果发布了更新版本，以 [GitHub Releases](https://github.com/sl251/HDSI-Android/releases/latest) 为准。
+**当前文档对应版本：`0.1.0-preview.9.7.1`**。如果发布了更新版本，以 [GitHub Releases](https://github.com/sl251/HDSI-Android/releases/latest) 为准。
 
 **[前往 Releases 下载签名 APK](https://github.com/sl251/HDSI-Android/releases/latest)**
 
 - **系统要求：** Android 8.0 及以上，ARM64（arm64-v8a）。
-- **9.7 安装包：** `HDS-Android-0.1.0-preview.9.7-arm64.apk`。文件名还沿用旧的 HDS-Android，不影响安装。
-- **版本号：** versionCode 36，可在系统「应用信息」中核对。
+- **9.7.1 安装包：** `HDS-Android-0.1.0-preview.9.7.1-arm64.apk`。
+- **版本号：** versionCode 37，可在系统「应用信息」中核对。
 - **文件校验：** 使用 Release 附件中的 `SHA256SUMS.txt`。
 - **存储空间：** 建议预留至少 1.5 GB；开启实验性本地 QQ 接入还需额外约 1.6 GB。
 
@@ -81,6 +81,8 @@ https://github.com/user-attachments/assets/809470b8-84a5-4e32-ac78-d59d217fac7b
 需要给不同任务分配模型，可以到「空间 → 任务分工」调整。
 
 ## 🗞️ 最近更新
+
+**Preview 9.7.1**：免费生图新增网页验证与下载接回原任务；修复图片跳转下载、保存重试和动态配图；图片诊断可从输入区直接打开，减少向量检索重复提示，去除 QQ 导航红点。免费站点需要人工验证时请在网页完成，服务可用性仍由站点决定。详见 [9.7.1 更新说明](docs/PREVIEW9.7.1.md)。
 
 **Preview 9.7（2026-10-25）** 主要更新：
 

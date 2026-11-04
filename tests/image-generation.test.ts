@@ -4,7 +4,8 @@ import { mkdtempSync, readFileSync, writeFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { defaultExperience } from '../packages/contracts/experience'
-import { imageApi, imageResponse, imageResult, imageSize, boundedResponse, mediaFailure } from '../runtime/image-provider'
+import { imageApi, imageResponse, imageResult, imageSize, boundedResponse, mediaFailure, downloadImage, imageLimit, imageResponseLimit } from '../runtime/image-provider'
+import { imageStore } from '../runtime/media'
 import { mediaJobs } from '../runtime/media-jobs'
 import { normalizeExperience } from '../runtime/experience-config'
 import { experienceRuntime } from '../runtime/experience-runtime'
@@ -41,6 +42,62 @@ test('SSE image responses join deltas and reject truncated or malformed streams'
   assert.deepEqual(imageResponse(Buffer.from(sse + 'data: [DONE]\n\n'), 'text/event-stream').bytes, bytes)
   assert.throws(() => imageResponse(Buffer.from(sse), 'text/event-stream'), /响应格式/)
   assert.throws(() => imageResponse(Buffer.from('data: broken\n\ndata: [DONE]\n\n'), 'text/event-stream'), /响应格式/)
+})
+
+test('image responses accept plain Markdown, binary images without MIME and completed Gemini SSE', () => {
+  assert.deepEqual(imageResponse(Buffer.from(`Here is your image: ![result](${uri})`), 'text/plain').bytes, bytes)
+  assert.deepEqual(imageResponse(bytes, 'application/octet-stream').bytes, bytes)
+  const event = { candidates: [{ content: { parts: [{ inlineData: { mimeType: 'image/jpeg', data: base64 } }] }, finishReason: 'STOP' }] }
+  assert.deepEqual(imageResponse(Buffer.from(`data: ${JSON.stringify(event)}\n\n`), 'text/event-stream').bytes, bytes)
+})
+
+test('CDN redirects download the image without credentials and reject local destinations and loops', async () => {
+  const calls: string[] = []
+  const request = async (url: any, init: any) => {
+    calls.push(String(url)); assert.equal(init.headers, undefined); assert.equal(init.redirect, 'manual')
+    return calls.length === 1 ? new Response('', { status: 302, headers: { location: 'https://cdn.test/final.jpg' } }) : new Response(bytes)
+  }
+  assert.deepEqual(await downloadImage('https://assets.test/image', request as typeof fetch, new AbortController().signal), bytes)
+  assert.deepEqual(calls, ['https://assets.test/image', 'https://cdn.test/final.jpg'])
+  let requests = 0
+  await assert.rejects(downloadImage('https://assets.test/image', (async () => { requests++; return new Response('', { status: 302, headers: { location: 'https://127.0.0.1/private' } }) }) as typeof fetch, new AbortController().signal), /下载地址/)
+  assert.equal(requests, 1)
+  requests = 0
+  await assert.rejects(downloadImage('https://assets.test/image', (async () => { requests++; return new Response('', { status: 302, headers: { location: '/image' } }) }) as typeof fetch, new AbortController().signal), /下载地址/)
+  assert.equal(requests, 6)
+})
+
+test('large generated images fit the parser and storage budget while stickers retain their limit', async t => {
+  const directory = mkdtempSync(join(tmpdir(), 'hds-large-image-'))
+  t.after(() => rmSync(directory, { recursive: true, force: true }))
+  const large = Buffer.alloc(13 * 1024 * 1024); bytes.copy(large)
+  const response = new Response(JSON.stringify({ data: [{ b64_json: large.toString('base64') }] }))
+  const parsed = imageResponse(await boundedResponse(response, imageResponseLimit))
+  assert.equal(parsed.bytes?.length, large.length)
+  const store = imageStore(directory), asset = store.registerGeneratedImage(parsed.bytes!)
+  assert.ok(store.get(asset.id).startsWith('data:image/jpeg;base64,'))
+  assert.throws(() => store.registerSticker(large))
+  assert.throws(() => store.registerGeneratedImage(Buffer.alloc(imageLimit + 1)))
+})
+
+test('download and save retries reuse the generated result, including a cached Base64 result after restart', async t => {
+  let posts = 0, downloads = 0
+  const f = fixture(t, { fetch: async (_url: string, init: RequestInit) => {
+    if (init.method === 'POST') { posts++; return Response.json({ data: [{ url: 'https://cdn.test/image.jpg' }] }) }
+    if (++downloads === 1) throw new Error('network disconnected')
+    return new Response(bytes)
+  } })
+  f.create(); await waitFor(() => f.jobs.list()[0].status === 'failed')
+  assert.equal(f.jobs.list()[0].retryMode, 'retrieve')
+  f.jobs.retry('image-test-operation'); await waitFor(() => !!f.jobs.list()[0].delivered)
+  assert.equal(posts, 1); assert.equal(downloads, 2)
+  const saved = fixture(t, { fetch: async () => Response.json({ data: [{ b64_json: base64 }] }), saveImage: () => { throw new Error('disk temporarily unavailable') } })
+  saved.create(); await waitFor(() => saved.jobs.list()[0].status === 'failed')
+  assert.equal(saved.jobs.list()[0].retryMode, 'retrieve')
+  await saved.jobs.stop()
+  let delivered = 0
+  const resumed = mediaJobs({ directory: saved.directory, config: () => saved.config, getImage: () => uri, saveImage: data => { assert.deepEqual(data, bytes); return { id: assetId } }, delivered: async () => { delivered++ }, fetch: async () => assert.fail('must not generate or download again') })
+  try { resumed.retry('image-test-operation'); await waitFor(() => delivered === 1); assert.equal(resumed.list()[0].status, 'ready') } finally { await resumed.stop() }
 })
 
 test('automatic protocol selection honors explicit endpoints and manual overrides; image sizes match models', () => {

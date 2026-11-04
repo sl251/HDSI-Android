@@ -31,6 +31,7 @@ internal fun pickedImageUris(result: ActivityResult): List<android.net.Uri> {
 class HdsRuntimePlugin : Plugin() {
     private val io = Executors.newSingleThreadExecutor()
     private val retrievalIo = Executors.newSingleThreadExecutor()
+    private var freeImageBrowser: FreeImageBrowser? = null
     private fun runtime() = HdsRuntime.get(context)
     private val streamListener: (JSONObject) -> Unit = { notifyListeners("replyStream", JSObject.fromJSONObject(it)) }
     private val historyListener: (String) -> Unit = { notifyListeners("messageReceived", JSObject().put("cardId", it)) }
@@ -88,7 +89,7 @@ class HdsRuntimePlugin : Plugin() {
     }
     @PluginMethod fun stopVoiceRecording(call: PluginCall) { run(call) { voiceRecorder.stop() } }
     @PluginMethod fun cancelVoiceRecording(call: PluginCall) { run(call) { voiceRecorder.cancel(); JSONObject() } }
-    override fun handleOnDestroy() { if (runtime().replyStream === streamListener) runtime().replyStream = null; if (runtime().historyChanged === historyListener) runtime().historyChanged = null; runtime().cancelModelProbe(); voiceRecorder.cancel(); super.handleOnDestroy() }
+    override fun handleOnDestroy() { freeImageBrowser?.close(); if (runtime().replyStream === streamListener) runtime().replyStream = null; if (runtime().historyChanged === historyListener) runtime().historyChanged = null; runtime().cancelModelProbe(); voiceRecorder.cancel(); super.handleOnDestroy() }
     @PluginMethod fun status(call: PluginCall) { resolve(call, runtime().status()) }
     @PluginMethod fun powerSettings(call: PluginCall) { run(call) { RuntimePower(context).read() } }
     @PluginMethod fun savePowerSettings(call: PluginCall) { run(call) { RuntimePower(context).save(call.getString("mode") ?: "") } }
@@ -127,6 +128,16 @@ class HdsRuntimePlugin : Plugin() {
             return
         }
         startActivityForResult(call, Intent(Intent.ACTION_OPEN_DOCUMENT).setType("image/*").addCategory(Intent.CATEGORY_OPENABLE).putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true), "imagePicked")
+    }
+    @PluginMethod fun openFreeImage(call: PluginCall) {
+        val prompt = call.getString("prompt") ?: ""
+        if (prompt.isBlank() || prompt.length > 16000) { call.reject("画面描述为空或过长"); return }
+        activity.runOnUiThread {
+            try {
+                val browser = freeImageBrowser ?: FreeImageBrowser(activity, io).also { freeImageBrowser = it }
+                browser.open(prompt) { resolve(call, it) }
+            } catch (failure: Exception) { call.reject(failure.message ?: "无法打开免费生图页面", failure) }
+        }
     }
     @ActivityCallback private fun cameraPicked(call: PluginCall?, result: ActivityResult) {
         if (call == null) return

@@ -9,6 +9,22 @@ import { emptyLibrary, importIntoPack, poolLibrary, stickerEntryVisible, sticker
 const first = 'diagnostic-request-first', second = 'diagnostic-request-second'
 const temporary = () => { const directory = mkdtempSync(join(tmpdir(), 'hds-diagnostics-')); return { directory, file: join(directory, 'events.json') } }
 
+test('retrieval coalescing keeps background and unrelated messages isolated', () => {
+  const { directory, file } = temporary()
+  try {
+    const store = new MessageDiagnostics(file)
+    store.retrieval([], 'embedding', 'fallback', { reason: 'authentication', providerSlot: 1 }, store.epoch)
+    store.retrieval([first], 'embedding', 'fallback', { reason: 'authentication', providerSlot: 1 }, store.epoch)
+    store.retrieval([second], 'embedding', 'fallback', { reason: 'authentication', providerSlot: 1 }, store.epoch)
+    store.retrieval([second], 'embedding', 'fallback', { reason: 'authentication', providerSlot: 1 }, store.epoch)
+    store.retrieval([first], 'embedding', 'succeeded', { providerSlot: 1 }, store.epoch)
+    assert.equal(store.list().events.length, 4)
+    assert.equal(store.list(second).events[0].count, 2)
+    assert.ok(store.list(first).events.every(event => !event.requestIds.includes(second)))
+    assert.equal(store.list().events.filter(event => !event.requestIds.length).length, 1)
+  } finally { rmSync(directory, { recursive: true, force: true }) }
+})
+
 test('diagnostics isolate overlapping async scopes, correlate delayed delivery and suppress cleared work', async () => {
   const { directory, file } = temporary()
   try {

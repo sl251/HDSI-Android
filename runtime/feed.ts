@@ -14,6 +14,17 @@ export function feedStore(directory: string) {
     list: () => store.read().posts.filter(p => !p.deleted).slice(-200).reverse(),
     revision: () => store.read().sequence,
     observed: () => store.read().observed,
+    attachImages(postId: string, images: string[]) {
+      return store.change(s => {
+        const post = s.posts.find(p => p.id === postId && p.actor === 'character')
+        if (!post) return false
+        // Deleting a post while its image is generating must not recreate it.
+        if (post.deleted) return true
+        const next = [...new Set([...post.images, ...images.filter(id => /^[a-f0-9]{64}$/.test(id))])].slice(0, 3)
+        if (JSON.stringify(next) !== JSON.stringify(post.images)) { post.images = next; event(s, post.id, 'character', '添加配图', '') }
+        return true
+      })
+    },
     observe: (through: number) => store.change(s => { s.observed = Math.max(s.observed, Math.min(through, s.sequence)) }),
     mutate(actor: Actor, action: string, payload: Record<string, unknown>, operationId: string) {
       if (!/^[\w:-]{8,160}$/.test(operationId)) throw new Error('动态操作编号无效')

@@ -9,7 +9,10 @@ function readPatches(file) {
   const patches = {}
   let name, hunk
   for (const line of readFileSync(new URL(file, import.meta.url), 'utf8').replace(/\r\n/g, '\n').split('\n')) {
-    if (line.startsWith('--- a/')) continue
+    if (line.startsWith('diff --git ') || line.startsWith('--- ')) {
+      hunk = undefined
+      continue
+    }
     if (line.startsWith('+++ b/')) {
       name = line.slice(6)
       patches[name] = []

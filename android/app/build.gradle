@@ -11,8 +11,8 @@ android {
         applicationId "io.hdsinterlude.android"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 36
-        versionName "0.1.0-preview.9.7"
+        versionCode 37
+        versionName "0.1.0-preview.9.7.1"
         buildConfigField 'String', 'HDS_VERSION', '"' + new groovy.json.JsonSlurper().parse(file('../../upstream/hds-interlude/package.json')).version + '"'
         ndk { abiFilters 'arm64-v8a' }
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"

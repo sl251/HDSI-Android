@@ -30,7 +30,7 @@ class CharacterAvatarStore(private val context: Context, private val store: HdsS
                 require(sourceId.matches(Regex("[a-f0-9]{64}"))) { "头像图片编号无效" }
                 val root = File(store.profile(), "images").canonicalFile
                 listOf("jpg", "png", "webp", "gif").map { File(root, "$sourceId.$it") }
-                    .firstOrNull { it.isFile && it.canonicalFile.parentFile == root && it.length() <= 10 * 1024 * 1024 }
+                    .firstOrNull { it.isFile && it.canonicalFile.parentFile == root && it.length() <= 16 * 1024 * 1024 }
                     ?: throw IllegalArgumentException("生成的头像不存在于当前故事")
             } else {
                 val data = input.optString("dataUri")

@@ -28,15 +28,31 @@ test('real Koishi HTTP embedding uses explicit model, excludes chat fields, refu
     assert.deepEqual(await client.embed('neutral', { foreground: true }), [1, 2])
     assert.deepEqual(requests[0], { url: '/v1/embeddings', body: { model: 'vector', input: 'neutral' }, auth: 'Bearer mock-secret' })
     const id = client.identity(); config.embedding.model = 'different'; assert.notEqual(client.identity(), id)
-    for (vector of [[], [0, 0], ['1'], [null]]) await assert.rejects(client.embed('neutral'), /invalid_response/)
+    for (vector of [[], [0, 0], ['1'], [null]]) await assert.rejects(new OpenAICompatibleEmbedder(ctx, config).embed('neutral'), /invalid_response/)
     vector = [1]; redirect = true
-    const before = requests.length; await assert.rejects(client.embed('neutral')); assert.equal(requests.length, before + 1)
-    redirect = false; status = 401; await assert.rejects(client.embed('neutral'), /authentication/)
+    const before = requests.length; await assert.rejects(new OpenAICompatibleEmbedder(ctx, config).embed('neutral')); assert.equal(requests.length, before + 1)
+    redirect = false; status = 401; await assert.rejects(new OpenAICompatibleEmbedder(ctx, config).embed('neutral'), /authentication/)
     config.mobileBeforeRequest = () => { throw new Error('后台预算') }; const count = requests.length; await assert.rejects(client.embed('neutral'), /background_budget/); assert.equal(requests.length, count)
   } finally { await ctx.stop(); server.closeAllConnections(); await new Promise<void>(r => server.close(() => r())) }
 })
 test('gateway categories require response evidence and remain secret free', () => {
   for (const [status, body, category] of [[500, 'convert_request_failed', 'gateway_convert_request'], [500, 'model ratio not found', 'gateway_model_ratio'], [500, 'other', 'provider_error'], [404, 'other', 'route_not_found'], [405, 'other', 'route_not_found'], [422, 'other', 'invalid_request']]) assert.equal(classifyRetrievalError({ response: { status, data: body } }).category, category)
+})
+
+test('embedding backfill backs off repeated failures, then recovers without diagnostic spam', async t => {
+  let clock = 100000, calls = 0, denied = true
+  t.mock.method(Date, 'now', () => clock)
+  const events: any[] = [], config = embeddingConfig()
+  config.mobileRetrievalEvent = (event: any) => events.push(event)
+  const client = new OpenAICompatibleEmbedder({ http: { post: async () => {
+    calls++; if (denied) throw { response: { status: 401 } }
+    return { data: [{ embedding: [1, 2] }] }
+  } } } as any, config)
+  for (let i = 0; i < 10; i++) await assert.rejects(client.embed(`fact ${i}`), /authentication/)
+  assert.equal(calls, 1); assert.equal(events.length, 1)
+  denied = false; clock += 5 * 60000 + 1
+  assert.deepEqual(await client.embed('recovery'), [1, 2])
+  assert.equal(calls, 2); assert.equal(events.at(-1).status, 'succeeded')
 })
 
 test('foreground query bypasses a full background budget while backfill issues zero requests', async () => {

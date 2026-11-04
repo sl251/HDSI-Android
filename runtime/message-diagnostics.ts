@@ -92,18 +92,20 @@ export class MessageDiagnostics {
   }
   retrieval(ids: string[], task: string, outcome: string, detail: Detail, epoch: number) {
     if (epoch !== this.epoch) return
-    const key = `${task}:${detail.providerSlot ?? 0}:${detail.reason ?? outcome}`
+    // A background call and separate messages must never inherit one another's failures.
+    const scope = [...new Set(ids.filter(safeId))].sort().join(',')
+    const prefix = `${task}:${detail.providerSlot ?? 0}:${scope}:`
+    const key = `${prefix}${detail.reason ?? outcome}`
     const previous = this.retrievalMerged.get(key)
     if (previous && Date.now() - previous.at < 60000 && this.events.includes(previous)) {
       previous.count = (previous.count ?? 1) + 1
-      previous.requestIds = [...new Set([...previous.requestIds, ...ids])].slice(0, 100)
       this.save(); return
     }
     this.record(ids, task, outcome, { ...detail, count: 1 })
     this.retrievalMerged.set(key, this.events[this.events.length - 1])
     if (this.retrievalMerged.size > 100) this.retrievalMerged.delete(this.retrievalMerged.keys().next().value!)
-    if (outcome === 'succeeded') for (const other of this.retrievalMerged.keys()) if (other.startsWith(`${task}:${detail.providerSlot ?? 0}:`) && other !== key) this.retrievalMerged.delete(other)
-    if (outcome === 'fallback') this.retrievalMerged.delete(`${task}:${detail.providerSlot ?? 0}:succeeded`)
+    if (outcome === 'succeeded') for (const other of this.retrievalMerged.keys()) if (other.startsWith(prefix) && other !== key) this.retrievalMerged.delete(other)
+    if (outcome === 'fallback') this.retrievalMerged.delete(`${prefix}succeeded`)
   }
   list(messageId?: string) {
     const before = this.events.length

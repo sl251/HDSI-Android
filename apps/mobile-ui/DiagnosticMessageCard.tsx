@@ -1,7 +1,9 @@
 import React, { useState } from 'react'
-import type { DiagnosticMessageEvent } from '../../packages/contracts'
+import type { DiagnosticMessageEvent, MediaJob, NativeBridge } from '../../packages/contracts'
 import { diagnosticLabels, diagnosticReasons } from '../../packages/contracts/diagnostics'
-import { diagnosticAdvice, diagnosticConnection, diagnosticDuration, diagnosticReasonLabel, diagnosticTime, type DiagnosticMessage } from './message-diagnostics'
+import { diagnosticAdvice, diagnosticConnection, diagnosticDuration, diagnosticReasonLabel, diagnosticTime, latestRetrieval, type DiagnosticMessage } from './message-diagnostics'
+import { mediaRetryLabel } from './media-job-state'
+import { FreeImageRecovery } from './FreeImageRecovery'
 
 export function EventDetail({ event }: { event: DiagnosticMessageEvent }) {
   return <li data-outcome={event.outcome} data-event-id={event.id}>
@@ -27,16 +29,20 @@ export function EventDetail({ event }: { event: DiagnosticMessageEvent }) {
     <small>事件编号：<code>{event.id}</code></small>
   </li>
 }
-export function DiagnosticMessageCard({ message, focused = false }: { message: DiagnosticMessage; focused?: boolean }) {
+export function DiagnosticMessageCard({ message, focused = false, jobs = [], retryImage, retryDisabled, configureImages, bridge, refreshJobs }: { message: DiagnosticMessage; focused?: boolean; jobs?: MediaJob[]; retryImage?: (job: MediaJob) => void; retryDisabled?: boolean; configureImages?: () => void; bridge?: NativeBridge; refreshJobs?: () => Promise<void> }) {
   const [expanded, setExpanded] = useState(focused)
   const [count, setCount] = useState(100)
   const current = message.steps[message.currentStep]
   const detailsId = `diagnostic-details-${encodeURIComponent(message.id)}`
+  const retrieval = latestRetrieval(message.events)
+  const imageJobs = jobs.filter(job => message.aliases.includes(job.id))
   return <li className="diagnostic-message-card" data-diagnostic-message={message.id} data-focused={focused || undefined} data-failed={!!message.failure} tabIndex={-1} aria-label={`消息诊断：${message.preview}`}>
-    {message.failure && <p className="diagnostic-advice"><b>怎么办：</b>{diagnosticAdvice(message.failure.reason, message.failure.stage)}</p>}
+    {message.failure && <p className="diagnostic-advice"><b>怎么办：</b>{diagnosticAdvice(message.failure.reason, message.failure.stage, message.failure.mediaPhase)}</p>}
+    {message.events.some(event => event.stage === 'image') && <div className="actions">{configureImages && <button onClick={configureImages}>检查生图设置</button>}{retryImage && imageJobs.filter(job => mediaRetryLabel(job)).map(job => <button key={job.id} disabled={retryDisabled} onClick={() => retryImage(job)}>{mediaRetryLabel(job)}</button>)}</div>}
+    {bridge && refreshJobs && imageJobs.map(job => <FreeImageRecovery key={job.id} job={job} bridge={bridge} disabled={retryDisabled} refresh={refreshJobs} />)}
     <div className="diagnostic-card-heading"><b>{message.preview}</b><time dateTime={new Date(message.at).toISOString()}>{diagnosticTime(message.at)}</time></div>
     <p className="diagnostic-summary">{message.failure ? `本轮${current.name}失败 · ${diagnosticReasonLabel(message.failure.reason, message.failure.stage)}` : message.recovered ? '模型重试后已恢复，尝试记录可在下方查看。' : current.label === '未记录' ? '记录不完整，最终结果未确认。' : `${current.name} · ${current.label}`}</p>
-    {message.events.some(event => ['embedding', 'rerank'].includes(event.stage)) && <p className="caption">检索增强：{message.events.some(event => event.outcome === 'fallback') ? '检索失败，已回退本地排序；聊天投递状态见下方。' : '检索已完成'}</p>}
+    {retrieval.length > 0 && <p className="caption">检索增强：{retrieval.some(event => event.outcome === 'fallback') ? '暂用本地排序，可以继续聊天。需要时在任务分工检查向量连接。' : '检索已完成，之前的降级已恢复。'}</p>}
     <ol className="diagnostic-pipeline" aria-label="消息处理步骤">{message.steps.map((step, index) => <li key={step.stage} data-stage={step.stage} data-state={step.state} aria-current={index === message.currentStep ? 'step' : undefined} aria-label={`第${index + 1}步：${step.name}，${step.label}`}>
       <span>{index + 1}. {step.name}{index < message.steps.length - 1 && <span className="diagnostic-arrow" aria-hidden="true"> →</span>}</span><small>{step.state === 'failed' ? '失败 · ' : ''}{step.label}</small>
     </li>)}</ol>

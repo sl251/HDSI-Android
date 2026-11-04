@@ -220,3 +220,13 @@ nav .nav-unread { background:#c23e43; color:white; border-radius:9px; transform:
 .task-backups .toggle{min-height:44px}.task-backups .toggle span{overflow-wrap:anywhere}
 .model-center .retrieval-settings{padding:0;margin-top:24px;border:0;box-shadow:none;background:none}
 @media(prefers-reduced-motion:reduce){.typing-dots i{animation:none!important;opacity:1}}
+
+/* Image progress stays next to the composer; details expand only on request. */
+.media-job-notice{margin:8px 0;padding:10px 14px;border:1px solid var(--line);border-radius:16px;background:rgb(var(--surface-rgb));font-size:12px;overflow-wrap:anywhere}
+.media-job-heading{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.media-job-notice button{min-height:44px;color:var(--accent);flex-shrink:0}
+.media-job-notice summary{color:var(--muted);cursor:pointer}
+.media-job-notice details[open]{max-height:240px;overflow:auto}
+.media-job-row{padding:10px 0;border-top:1px solid var(--line)}
+.media-job-row p{line-height:1.7;margin:8px 0}.media-job-row .actions{display:flex;flex-wrap:wrap;gap:12px}
+.feed-job-dock{position:sticky;bottom:calc(80px + var(--safe-bottom,0px));z-index:2}

@@ -39,7 +39,7 @@ export const diagnosticReasons: Record<string, string> = {
   no_bridge: '本地语音服务未配置。', no_text: '本条没有可朗读文字。',
   invalid_bridge: '本地语音服务地址无效。',
   duplicate: '相同请求已接收，未重复提交模型。',
-  image_verification: '免费渠道要求站点验证，应用内暂不支持完成验证，请更换生图渠道。',
+  image_verification: '免费渠道需要网页验证。点击“打开免费生图”，完成验证、生成并下载后会接回原任务。',
   image_busy: '免费渠道报告已有任务正在生成，请等待原任务结束。',
   image_blocked: '服务拒绝本次图片内容，请调整画面描述。',
   image_response: '服务返回的生图响应格式无法识别。', image_empty: '服务返回成功，但没有可用图片，可能只返回了文字。',

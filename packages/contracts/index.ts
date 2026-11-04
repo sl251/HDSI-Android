@@ -81,6 +81,7 @@ export type NativeBridge = {
   appearance(): Promise<Appearance>;
   saveAppearance(options: Appearance & { removeBackground?: boolean; removeFont?: boolean }): Promise<void>;
   pickAppearanceAsset(options: { kind: 'background' | 'font' }): Promise<Appearance & { cancelled?: boolean }>;
+  openFreeImage?(options: { prompt: string }): Promise<{ cancelled: boolean; dataUri?: string }>;
   pickImage(options?: { limit?: number; source?: 'camera' | 'gallery' }): Promise<{ cancelled: boolean; dataUri?: string; images?: { dataUri: string }[]; errors?: { index: number; message: string }[]; truncated?: boolean }>;
   pickStickers(options: { directory: boolean }): Promise<{ cancelled: boolean; name?: string; assets?: { id: string; path: string; size: number; mime: string }[]; skipped?: number }>;
   stickerImage(options: { id: string }): Promise<{ dataUri: string }>;

@@ -7,3 +7,8 @@
 *.mjs text eol=lf
 # Preserve raw command output, including whitespace in assertion diagnostics.
 *.log text eol=lf whitespace=-blank-at-eol
+
+# This source is hashed by the generated browser sanitizer.
+upstream/hds-interlude/src/share-sync.ts text eol=lf
+# Unified diff context encodes blank lines with a leading space.
+scripts/mobile-hds-rc57.patch text eol=lf whitespace=-blank-at-eol

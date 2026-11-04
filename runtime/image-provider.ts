@@ -2,12 +2,14 @@ import type { MediaConnection } from '../packages/contracts/experience'
 import { diagnosticError } from './message-diagnostics'
 
 export const imageLimit = 16 * 1024 * 1024
+// JSON/SSE carries Base64, which is larger than the decoded image.
+export const imageResponseLimit = Math.ceil(imageLimit * 4 / 3) + 1024 * 1024
 export const mediaErrors: Record<string, string> = {
   authentication: '媒体服务拒绝密钥，请检查 API Key。', permission: '媒体服务拒绝访问，请检查模型权限。',
   provider_quota: '媒体服务余额或额度不足。', rate_limit: '媒体服务限流，请稍后再试。',
   throttled_or_quota: '媒体服务返回 429，请检查限流和额度。', provider_error: '媒体服务发生错误。',
   invalid_request: '媒体服务拒绝请求参数，请检查模型和接口格式。', media_route: '媒体接口不存在或不支持此方法，请检查地址和接口格式。',
-  image_verification: '免费渠道要求站点验证，当前无法在应用内完成，请更换生图渠道。',
+  image_verification: '免费渠道需要网页验证，请点击“打开免费生图”继续完成。',
   image_busy: '免费渠道已有任务在处理，请等待该任务结束。', image_blocked: '服务拒绝了本次图片内容，请调整画面描述。',
   image_response: '生图响应格式无法识别。', image_empty: '服务返回成功，但没有返回可用图片。',
   image_async: '服务返回异步生图任务，但未提供受支持的查询协议。',
@@ -65,7 +67,10 @@ export function mediaJson(bytes: Buffer) {
   catch { throw new MediaError('image_response') }
 }
 export function imageResponse(bytes: Buffer, contentType = ''): ImageResult & { completed?: boolean } {
-  if (contentType.startsWith('image/')) return { bytes }
+  if (contentType.startsWith('image/') || bytes.subarray(0, 3).equals(Buffer.from([255, 216, 255])) || bytes.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10])) || bytes.subarray(0, 4).toString() === 'RIFF' && bytes.subarray(8, 12).toString() === 'WEBP') {
+    if (bytes.length > imageLimit) throw new MediaError('media_size')
+    return { bytes, completed: true }
+  }
   const text = bytes.toString().trim()
   // Some gateways return SSE despite stream:false. Join text deltas before parsing Markdown.
   if (contentType.includes('text/event-stream') || text.startsWith('data:')) {
@@ -76,11 +81,15 @@ export function imageResponse(bytes: Buffer, contentType = ''): ImageResult & { 
     })
     const failure = values.map(value => imageResult(value)).find(result => result.failed)
     if (failure) return failure
-    const completed = /(?:^|\n)data:\s*\[DONE\]/.test(text) || values.some(value => value.choices?.some((choice: any) => choice.finish_reason))
+    const completed = /(?:^|\n)data:\s*\[DONE\]/.test(text) || values.some(value => value.choices?.some((choice: any) => choice.finish_reason) || value.candidates?.some((candidate: any) => candidate.finishReason || candidate.finish_reason))
     if (!completed) throw new MediaError('image_response')
     const textDeltas = values.flatMap(value => value.choices ?? []).map(choice => typeof choice.delta?.content === 'string' ? choice.delta.content : '').join('')
     const joined = imageResult(textDeltas)
     return { ...(joined.bytes || joined.url ? joined : imageResult(values)), completed: true }
+  }
+  if (!/^[{[\"]/.test(text)) {
+    const direct = imageResult(text)
+    if (direct.bytes || direct.url) return { ...direct, completed: true }
   }
   const data = mediaJson(bytes)
   return { ...imageResult(data), completed: Array.isArray(data?.choices) || Array.isArray(data?.candidates) || Array.isArray(data?.data) || ['completed', 'succeeded', 'success'].includes(data?.status) }
@@ -94,8 +103,9 @@ export function imageResult(value: any, depth = 0): ImageResult {
     const uri = /^data:image\/(?:png|jpe?g|webp);base64,([A-Za-z0-9+/=\s]+)$/i.exec(text)
     if (uri) {
       const encoded = uri[1].replace(/\s/g, '')
-      if (encoded.length > imageLimit * 1.4) throw new MediaError('media_size')
+      if (encoded.length > Math.ceil(imageLimit / 3) * 4) throw new MediaError('media_size')
       const bytes = Buffer.from(encoded, 'base64')
+      if (bytes.length > imageLimit) throw new MediaError('media_size')
       if (bytes.length && bytes.toString('base64').replace(/=+$/, '') === encoded.replace(/=+$/, '')) return { bytes }
       return {}
     }
@@ -144,6 +154,22 @@ export function imageApi(connection: MediaConnection): 'images' | 'chat' | 'gemi
   if (/\/chat\/completions\/?$/.test(url.pathname)) return 'chat'
   if (url.hostname === 'generativelanguage.googleapis.com' && !url.pathname.includes('/openai')) return 'gemini'
   return /gemini.*image|nano[-_ ]?banana/i.test(connection.model) ? 'chat' : 'images'
+}
+
+/** Follow CDN redirects without sending API credentials or allowing private/local targets. */
+export async function downloadImage(address: string, request: typeof fetch, signal: AbortSignal) {
+  let url: URL
+  try { url = new URL(address) } catch { throw new MediaError('image_download') }
+  for (let redirects = 0; redirects <= 5; redirects++) {
+    if (url.protocol !== 'https:' || url.username || url.password || /^(localhost(?:\.|$)|0\.|127\.|10\.|192\.168\.|169\.254\.|\[|172\.(1[6-9]|2\d|3[01])\.)/i.test(url.hostname)) throw new MediaError('image_download')
+    const response = await request(url.href, { signal, redirect: 'manual' })
+    if (![301, 302, 303, 307, 308].includes(response.status)) return boundedResponse(response, imageLimit)
+    const location = response.headers.get('location')
+    await response.body?.cancel()
+    if (!location || redirects === 5) throw new MediaError('image_download')
+    try { url = new URL(location, url) } catch { throw new MediaError('image_download') }
+  }
+  throw new MediaError('image_download')
 }
 export function imageSize(model: string, ratio?: string) {
   if (ratio === '1:1' || /dall-e-2/i.test(model)) return '1024x1024'

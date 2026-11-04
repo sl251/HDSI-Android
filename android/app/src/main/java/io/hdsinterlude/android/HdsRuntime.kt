@@ -446,11 +446,11 @@ class HdsRuntime private constructor(private val context: Context) {
         process = null; token = ""; secrets = emptyList(); port = 0; state = "stopped"; progress = "HDS 已停止，剧情保留在本机"; error = ""
     }
     fun rpc(method: String, payload: JSONObject): JSONObject {
-        if (method in setOf("messages.sendLocal", "turn.retry", "media.create", "media.retry", "story.resume", "feed.mutate", "qq.send")) HdsService.noteActivity()
+        if (method in setOf("messages.sendLocal", "turn.retry", "media.create", "media.retry", "media.freeInput", "media.completeFree", "story.resume", "feed.mutate", "qq.send")) HdsService.noteActivity()
         require(!payload.has("expectedCardId") || payload.optString("expectedCardId") == store.publicSettings().optString("activeCard")) { "故事已切换，请回到原故事继续" }
         require(!profileMaintenance || method == "health") { "故事正在备份或维护" }
         if (method == "experience.configure") secrets = (secrets + listOf("stt", "image").map { payload.optJSONObject(it)?.optString("apiKey") ?: "" }.filter { it.isNotEmpty() }).distinct()
-        require(method in listOf("experience.configure", "experience.snapshot", "feed.mutate", "media.create", "media.retry", "turn.retry", "weather.status", "diagnostics.messages", "diagnostics.clear", "config.status", "preset.sync", "preset.syncStatus", "images.upload", "images.get", "memory.facts", "memory.factSources", "maintenance.start", "maintenance.status", "health", "messages.history", "messages.since", "messages.sendLocal", "story.snapshot", "story.applySetting", "story.pause", "story.resume", "qq.status", "qq.install", "qq.start", "qq.stop", "qq.refreshQr", "qq.accounts", "qq.quickLogin", "qq.policy", "qq.conversations", "qq.history", "qq.send")) { "不允许的本机 API 方法" }
+        require(method in listOf("experience.configure", "experience.snapshot", "feed.mutate", "media.create", "media.retry", "media.freeInput", "media.completeFree", "turn.retry", "weather.status", "diagnostics.messages", "diagnostics.clear", "config.status", "preset.sync", "preset.syncStatus", "images.upload", "images.get", "memory.facts", "memory.factSources", "maintenance.start", "maintenance.status", "health", "messages.history", "messages.since", "messages.sendLocal", "story.snapshot", "story.applySetting", "story.pause", "story.resume", "qq.status", "qq.install", "qq.start", "qq.stop", "qq.refreshQr", "qq.accounts", "qq.quickLogin", "qq.policy", "qq.conversations", "qq.history", "qq.send")) { "不允许的本机 API 方法" }
         require(port > 0 && token.isNotEmpty()) { "请先启动 HDS" }
         val connection = URL("http://127.0.0.1:$port/rpc").openConnection() as HttpURLConnection
         try {
@@ -459,7 +459,7 @@ class HdsRuntime private constructor(private val context: Context) {
             connection.outputStream.use { it.write(JSONObject().put("method", method).put("payload", payload).toString().toByteArray(Charsets.UTF_8)) }
             val status = connection.responseCode
             val stream = if (status in 200..299) connection.inputStream else connection.errorStream
-            val body = stream?.let { String(readLimited(it, if (method == "images.get") 14 * 1024 * 1024 else 4 * 1024 * 1024), Charsets.UTF_8) } ?: "{}"
+            val body = stream?.let { String(readLimited(it, if (method == "images.get") 23 * 1024 * 1024 else 4 * 1024 * 1024), Charsets.UTF_8) } ?: "{}"
             val result = JSONObject(body)
             require(status in 200..299) { result.optString("error", "本机请求失败：$status") }
             return result

@@ -311,6 +311,8 @@ export class SilentEmbedder implements NarrativeEmbedder {
  */
 export class OpenAICompatibleEmbedder implements NarrativeEmbedder {
   private readonly routing: ModelRoutingTable
+  private retryAfter = 0
+  private lastFailure?: { category: string; httpStatus?: number }
 
   constructor(private ctx: Context, private config: ModelConfig, routing?: ModelRoutingTable) {
     this.routing = routing ?? resolveModelRouting(config)
@@ -327,6 +329,9 @@ export class OpenAICompatibleEmbedder implements NarrativeEmbedder {
   async embed(input: string, context: RetrievalRequestContext = {}): Promise<number[]> {
     const embedding = this.config.embedding
     if (!embedding?.enabled || !input.trim()) return []
+    // Backfill may ask for many vectors in one turn. Avoid repeating a known-bad
+    // request and diagnostic for every fact; configuration reload creates a new client.
+    if (this.lastFailure && Date.now() < this.retryAfter) throw new RetrievalError(this.lastFailure.category, this.lastFailure.httpStatus)
     const target = resolveEffectiveEmbeddingTarget(this.config, this.routing)
     const started = Date.now()
     const report = beginRetrieval(this.config)
@@ -338,10 +343,15 @@ export class OpenAICompatibleEmbedder implements NarrativeEmbedder {
       const response = await retrievalPost(this.ctx, target.provider!, target.endpoint, body, target.timeout, context) as EmbeddingResponse
       const vector = response?.data?.[0]?.embedding
       if (!validRetrievalVector(vector) || target.dimensions > 0 && vector.length !== target.dimensions) throw new RetrievalError('invalid_response')
+      this.lastFailure = undefined; this.retryAfter = 0
       report({ task: 'embedding', status: 'succeeded', providerId: target.provider?.id, elapsedMs: Date.now() - started, vectorDimensions: vector.length })
       return vector
     } catch (error) {
       const failure = classifyRetrievalError(error)
+      if (failure.category !== 'cancelled' && failure.category !== 'background_budget') {
+        this.lastFailure = failure
+        this.retryAfter = Date.now() + (['authentication', 'permission', 'route_not_found', 'invalid_request', 'configuration', 'provider_quota', 'invalid_response'].includes(failure.category) ? 5 * 60000 : 60000)
+      }
       report({ task: 'embedding', status: 'fallback', providerId: target.provider?.id, elapsedMs: Date.now() - started, ...failure })
       throw new RetrievalError(failure.category, failure.httpStatus)
     }

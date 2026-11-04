@@ -17,12 +17,21 @@ export const diagnosticHelp = {
   unknown_error: { label: '原因未确认', advice: '查看下方明细，可将原因码复制反馈。' },
 } satisfies Record<string, { label: string; advice: string }>
 export const genericDiagnosticAdvice = '查看下方明细，可将原因码复制反馈。'
-export function diagnosticAdvice(reason?: string, stage?: string) {
+export function diagnosticAdvice(reason?: string, stage?: string, phase?: string) {
   if (stage === 'image') {
+    if (phase === 'deliver' || reason === 'image_delivery') return '图片已经保存。点击“重新发送图片”即可，不会重新生图。'
+    if (phase === 'download') return '图片已经生成，获取图片时遇到问题。检查网络后点击“重新获取图片”，不会重新生图。'
+    if (phase === 'save') return '请检查手机剩余空间，再尝试重新保存图片。已缓存的生成结果会继续使用。'
     if (reason === 'timeout' || reason === 'network') return '先在生图服务端确认任务是否完成；提交结果未知时不要重复生成，避免重复计费。'
     return `${diagnosticReasons[reason ?? ''] ?? '查看下方生图明细。'} 在空间→语音识别与生图中检查渠道、密钥、模型和接口格式。`
   }
   return diagnosticHelp[reason as keyof typeof diagnosticHelp]?.advice ?? genericDiagnosticAdvice
+}
+/** Only the latest result for each retrieval connection describes its current state. */
+export function latestRetrieval(events: DiagnosticMessageEvent[]) {
+  const latest = new Map<string, DiagnosticMessageEvent>()
+  for (const event of [...events].sort((a, b) => a.at - b.at)) if (['embedding', 'rerank'].includes(event.stage)) latest.set(`${event.stage}:${event.providerSlot ?? 0}`, event)
+  return [...latest.values()]
 }
 export function diagnosticReasonLabel(reason?: string, stage?: string) {
   return diagnosticHelp[reason as keyof typeof diagnosticHelp]?.label ?? (reason && diagnosticReasons[reason]) ?? (stage === 'voice' && reason ? voiceResultLabel({ reason, stage }) : '原因未确认')
@@ -115,14 +124,14 @@ export function aggregateDiagnosticMessages(input: DiagnosticMessageEvent[], mes
     return { id, aliases, events: rows, preview, at: rows[0].at, updatedAt: rows.at(-1)!.at, ...pipeline(rows) }
   }).sort((a, b) => b.updatedAt - a.updatedAt)
 }
-export type DiagnosticView = 'all' | 'failed' | 'latest'
+export type DiagnosticView = 'all' | 'failed' | 'latest' | 'images'
 export function visibleDiagnosticMessages(messages: DiagnosticMessage[], view: DiagnosticView, focus = '') {
-  const filtered = messages.filter(message => view !== 'failed' || (message.failure || message.events.some(event => event.outcome === 'fallback')))
+  const filtered = messages.filter(message => view === 'failed' ? !!message.failure : view === 'images' ? message.events.some(event => event.stage === 'image') : true)
   const visible = filtered.slice(0, view === 'latest' ? 20 : 200)
   const target = focus ? filtered.find(message => message.aliases.includes(focus)) : undefined
   if (target && !visible.includes(target)) visible.splice(visible.length - 1, 1, target)
   return visible
 }
 export function diagnosticsEmptyText(focus = '', view: DiagnosticView = 'all') {
-  return focus ? '这条消息暂无保留的诊断记录。' : view === 'failed' ? '一切正常，暂无失败记录' : '一切正常，暂无诊断记录'
+  return focus ? '这条消息暂无保留的诊断记录。' : view === 'failed' ? '一切正常，暂无失败记录' : view === 'images' ? '暂无图片任务记录。角色决定生图后，可在这里查看全过程。' : '一切正常，暂无诊断记录'
 }
