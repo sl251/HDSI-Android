@@ -19,7 +19,8 @@ async function main() {
     await qq.dispatch('qq.install', {})
     let limit = Date.now() + 12 * 60 * 1000
     while (qq.status().phase === 'installing' && Date.now() < limit) await new Promise(resolve => setTimeout(resolve, 1000))
-    if (!qq.status().installed) throw new Error(`Component install: ${qq.status().error}`)
+    const installation = qq.status()
+    if (!installation.installed) throw new Error(`Component install (${installation.progress}): ${installation.error}`)
     // A phone can reject native execution. That must leave stop/retry usable.
     const binary = join(componentsPath(directory), 'opt/QQ/qq')
     chmodSync(binary, 0o600)

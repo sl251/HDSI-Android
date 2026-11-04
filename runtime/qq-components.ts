@@ -34,7 +34,11 @@ export async function command(executable: string, args: string[], signal?: Abort
 }
 export async function verifiedDownload(spec: { url: string; sha256: string; maxBytes: number }, target: string, signal: AbortSignal, progress: Progress, component = '组件') {
   const hash = createHash('sha256')
-  const response = await fetch(spec.url, { signal, redirect: 'follow' })
+  const response = await fetch(spec.url, { signal, redirect: 'follow' }).catch(error => {
+    signal.throwIfAborted()
+    const code = (error.cause as NodeJS.ErrnoException | undefined)?.code
+    throw new Error(`${component} 下载连接失败${code ? ` (${code})` : ''}`, { cause: error })
+  })
   if (!response.ok || !response.body || !response.url.startsWith('https://')) throw new Error(`组件下载失败：HTTP ${response.status}`)
   const length = Number(response.headers.get('content-length'))
   const totalBytes = !response.headers.get('content-encoding') && Number.isSafeInteger(length) && length > 0 ? length : undefined

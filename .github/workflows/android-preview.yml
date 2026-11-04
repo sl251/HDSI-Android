@@ -49,6 +49,8 @@ jobs:
           sudo mount --bind /dev runtime/generated/rootfs/dev
           sudo mount -t proc proc runtime/generated/rootfs/proc
           sudo mount --bind /sys runtime/generated/rootfs/sys
+          # The chroot shares the runner network, so use its DNS instead of the guest's public resolver.
+          sudo install -m 0644 /etc/resolv.conf runtime/generated/rootfs/etc/resolv.conf
           cc -shared -fPIC scripts/deny-x11-hardlinks.c -o runtime/generated/rootfs/opt/hds/deny-x11-hardlinks.so
           npx esbuild scripts/xvfb-lock-smoke.ts --bundle --platform=node --format=cjs --outfile=runtime/generated/rootfs/opt/hds/xvfb-lock-smoke.cjs
           sudo chroot runtime/generated/rootfs /usr/bin/env PATH=/opt/node/bin:/usr/bin:/bin /opt/node/bin/node /opt/hds/xvfb-lock-smoke.cjs

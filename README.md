@@ -56,13 +56,12 @@ https://github.com/user-attachments/assets/809470b8-84a5-4e32-ac78-d59d217fac7b
 
 ## 📥 下载安装
 
-**当前文档对应版本：`0.1.0-preview.9.7.2`**。如果发布了更新版本，以 [GitHub Releases](https://github.com/sl251/HDSI-Android/releases/latest) 为准。
+当前发布版本为 **[Preview 9.7.2](https://github.com/sl251/HDSI-Android/releases/tag/v0.1.0-preview.9.7.2)**，Android `versionCode` 为 `38`。
 
 **[前往 Releases 下载签名 APK](https://github.com/sl251/HDSI-Android/releases/latest)**
 
 - **系统要求：** Android 8.0 及以上，ARM64（arm64-v8a）。
-- **9.7.2 安装包：** `HDS-Android-0.1.0-preview.9.7.2-arm64.apk`。
-- **版本号：** versionCode 38，可在系统「应用信息」中核对。
+- **9.7.2 安装包：** [HDS-Android-0.1.0-preview.9.7.2-arm64.apk](https://github.com/sl251/HDSI-Android/releases/download/v0.1.0-preview.9.7.2/HDS-Android-0.1.0-preview.9.7.2-arm64.apk)。
 - **文件校验：** 使用 Release 附件中的 `SHA256SUMS.txt`。
 - **存储空间：** 建议预留至少 1.5 GB；开启实验性本地 QQ 接入还需额外约 1.6 GB。
 
@@ -82,7 +81,7 @@ https://github.com/user-attachments/assets/809470b8-84a5-4e32-ac78-d59d217fac7b
 
 ## 🗞️ 最近更新
 
-**Preview 9.7.2**：全新 FlClash / Material 3 (Material You) 风格界面与弹簧动效重构；故事页选择语音后支持直接将「按住 说话」语音按钮内嵌至底部聊天栏（QQ 风格）；极简化各页面冗余文案与标题布局，修复滑动开关圆点与胶囊按钮文字垂直居中对齐。详见 [9.7.2 更新说明](docs/PREVIEW9.7.2.md)。
+**Preview 9.7.2** 更新了 Material 3 风格的界面和动效，简化了页面标题与布局，并修复了开关圆点和胶囊按钮的对齐。在故事页点「＋ → 语音」，即可在聊天栏按住说话、上滑取消，录完后可发送或移除录音。详见 [9.7.2 更新说明](docs/PREVIEW9.7.2.md)。
 
 **Preview 9.7.1**：免费生图新增网页验证与下载接回原任务；修复图片跳转下载、保存重试和动态配图；图片诊断可从输入区直接打开，减少向量检索重复提示，去除 QQ 导航红点。免费站点需要人工验证时请在网页完成，服务可用性仍由站点决定。详见 [9.7.1 更新说明](docs/PREVIEW9.7.1.md)。
 
