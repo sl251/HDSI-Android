@@ -13,17 +13,25 @@
   --panel-alpha: 0.88;
   --ui-font: -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans CJK SC", "Segoe UI", sans-serif;
   --font-scale: 1;
-  --surface-border: rgba(255, 255, 255, 0.75);
-  --outline-subtle: rgba(60, 82, 128, 0.11);
+  --surface-border: rgba(255, 255, 255, 0.56);
+  --outline-subtle: rgba(60, 82, 128, 0.12);
   --shadow: 0 4px 20px -2px rgba(22, 34, 66, 0.06), 0 2px 6px -1px rgba(22, 34, 66, 0.04);
-  --shadow-elevated: 0 12px 36px -4px rgba(20, 32, 64, 0.12), 0 4px 12px -2px rgba(20, 32, 64, 0.06);
-  --glint: inset 0 1px 0 rgba(255, 255, 255, 0.72);
+  --shadow-elevated: 0 12px 32px -6px rgba(20, 32, 64, 0.12), 0 4px 12px -2px rgba(20, 32, 64, 0.06);
+  --glint: inset 0 1px 0 rgba(255, 255, 255, 0.68);
+  --glass-bg: rgba(var(--surface-rgb), 0.78);
+  --glass-bg-strong: rgba(var(--surface-rgb), 0.92);
+  --glass-border: 1px solid color-mix(in srgb, var(--surface-border) 68%, var(--outline-subtle));
+  --glass-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.7), inset 0 -1px 0 rgba(255, 255, 255, 0.14);
+  --glass-shadow: var(--shadow-elevated);
+  --glass-blur: blur(22px) saturate(165%);
+  --glass-focus-border: color-mix(in srgb, var(--accent) 44%, var(--outline-subtle));
+  --glass-focus-ring: 0 0 0 2px color-mix(in srgb, var(--accent) 16%, transparent);
   --danger: #d93848;
   --ease: cubic-bezier(0.22, 1, 0.36, 1);
-  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
-  --fast: 150ms;
-  --base: 240ms;
-  --slow: 340ms;
+  --ease-spring: cubic-bezier(0.34, 1.38, 0.64, 1);
+  --fast: 120ms;
+  --base: 190ms;
+  --slow: 280ms;
   color-scheme: light;
   color: var(--ink);
   background: var(--paper);
@@ -44,6 +52,14 @@ body {
   z-index: 1;
   background: transparent;
   max-width: 740px;
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+  overflow-x: clip;
+}
+
+.app.has-photo-bg {
+  --glass-bg: rgba(var(--surface-rgb), 0.84);
 }
 
 #root {
@@ -59,44 +75,21 @@ body {
   height: 100%;
   object-fit: cover;
   pointer-events: none;
-  transition: opacity var(--base) var(--ease), filter var(--base) var(--ease);
 }
 
-/* FlClash AppBar */
+/* 顶部运行状态栏 */
 header {
   position: sticky;
   top: 0;
   z-index: 10;
+  flex: none;
+  justify-content: flex-end;
   border-bottom: 1px solid var(--outline-subtle);
-  padding-top: calc(12px + var(--safe-top));
-  padding-bottom: 10px;
-  background: color-mix(in srgb, rgb(var(--surface-rgb)) 86%, var(--paper));
-  backdrop-filter: blur(20px) saturate(165%);
-  -webkit-backdrop-filter: blur(20px) saturate(165%);
-}
-
-.wordmark {
-  font-family: var(--ui-font);
-  font-size: 22px;
-  font-weight: 800;
-  letter-spacing: -0.6px;
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  color: var(--ink);
-}
-
-.wordmark span {
-  display: inline-block;
-  font-family: var(--ui-font);
-  letter-spacing: 1.2px;
-  font-size: 10px;
-  font-weight: 700;
-  padding: 3px 8px;
-  border-radius: 999px;
-  background: var(--accent-soft);
-  color: var(--accent);
-  margin-top: 0;
+  padding-top: calc(10px + var(--safe-top));
+  padding-bottom: 8px;
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
 }
 
 /* FlClash Core Status Pill */
@@ -206,36 +199,26 @@ h2 {
 }
 
 main {
-  padding-bottom: calc(var(--nav-height) + 44px);
+  flex: 1 0 auto;
+  min-height: 0;
+  padding-bottom: calc(var(--nav-height, 64px) + 32px + var(--safe-bottom, 0px));
+}
+
+main[data-page="chat"] {
+  display: flex;
+  flex-direction: column;
+  padding-bottom: calc(var(--nav-height, 64px) + 20px + var(--safe-bottom, 0px));
+}
+
+.ime-visible main[data-page="chat"],
+.app.keyboard-open main[data-page="chat"] {
+  padding-bottom: calc(10px + var(--safe-bottom, 0px));
 }
 
 .page-heading p {
   font-size: 13px;
   color: var(--muted);
   line-height: 1.6;
-}
-
-.empty-chat {
-  min-height: 34dvh;
-  background: rgba(var(--surface-rgb), calc(var(--panel-alpha) * 0.75));
-  border: 1px solid var(--outline-subtle);
-  border-radius: 26px;
-  margin: 8px 0 18px;
-  padding: 28px 22px;
-  box-shadow: var(--glint), var(--shadow);
-}
-
-.empty-art span {
-  border-radius: 22px;
-  border-color: color-mix(in srgb, var(--accent) 30%, transparent);
-  background: rgba(var(--surface-rgb), 0.78);
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.04);
-}
-
-.empty-art b {
-  font-family: var(--ui-font);
-  font-weight: 600;
-  color: var(--accent);
 }
 
 /* Expressive Buttons & Chips */
@@ -250,7 +233,7 @@ button {
 }
 
 button:active:not(:disabled) {
-  transform: scale(0.96);
+  transform: scale(0.985);
 }
 
 button:disabled {
@@ -669,12 +652,16 @@ input[type="checkbox"] {
 
 /* M3 Segmented Tabs & Story Timeline */
 .tabs {
-  border: 1px solid var(--outline-subtle);
-  background: rgba(var(--surface-low-rgb), 0.9);
+  top: calc(var(--header-height, 59px) + 6px);
+  z-index: 8;
+  border: var(--glass-border);
+  background: var(--glass-bg-strong);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
   border-radius: 999px;
   padding: 4px;
   gap: 4px;
-  box-shadow: var(--glint), 0 2px 10px rgba(0, 0, 0, 0.03);
+  box-shadow: var(--glass-highlight), var(--glass-shadow);
 }
 
 .tabs button {
@@ -764,11 +751,18 @@ input[type="checkbox"] {
   display: none;
 }
 
-/* Floating Composer Dock */
+/* 底部停靠的液态玻璃输入栏 */
 .composer-wrap {
+  flex: none;
+  margin-top: auto;
   position: sticky;
-  bottom: calc(var(--nav-height) + 18px);
-  z-index: 4;
+  bottom: calc(var(--nav-height, 64px) + 20px + var(--safe-bottom, 0px));
+  z-index: 6;
+}
+
+.ime-visible .composer-wrap,
+.app.keyboard-open .composer-wrap {
+  bottom: 8px;
 }
 
 .composer-wrap .composer {
@@ -778,11 +772,17 @@ input[type="checkbox"] {
 
 .composer {
   border-radius: 26px;
-  background: rgba(var(--surface-rgb), 0.92);
-  box-shadow: var(--glint), var(--shadow-elevated);
-  border: 1px solid var(--surface-border);
+  background: var(--glass-bg);
+  box-shadow: var(--glass-highlight), var(--glass-shadow);
+  border: var(--glass-border);
   gap: 6px;
   padding: 6px;
+  transition: border-color var(--fast) var(--ease), box-shadow var(--fast) var(--ease), background-color var(--base) var(--ease);
+}
+
+.composer:focus-within {
+  border-color: var(--glass-focus-border);
+  box-shadow: var(--glass-highlight), var(--glass-focus-ring), var(--glass-shadow);
 }
 
 .composer textarea {
@@ -791,7 +791,9 @@ input[type="checkbox"] {
   border: 0;
 }
 
-.composer textarea:focus {
+.composer textarea:focus,
+.composer textarea:focus-visible {
+  outline: none;
   box-shadow: none;
   background: none;
 }
@@ -890,16 +892,16 @@ input[type="checkbox"] {
   border-radius: 16px;
 }
 
-/* FlClash Floating Pill Navigation Bar */
+/* 液态玻璃底部导航胶囊 */
 nav {
-  bottom: calc(12px + var(--safe-bottom));
+  bottom: calc(10px + var(--safe-bottom, 0px));
   width: calc(100% - 32px);
   max-width: 520px;
-  border: 1px solid var(--surface-border);
+  border: var(--glass-border);
   border-radius: 999px;
   padding: 6px 8px;
-  background: rgba(var(--surface-rgb), 0.88);
-  box-shadow: var(--glint), var(--shadow-elevated);
+  background: var(--glass-bg);
+  box-shadow: var(--glass-highlight), var(--glass-shadow);
   z-index: 10;
 }
 
@@ -937,10 +939,10 @@ nav button.active::after {
 /* Modals, Bottom Sheets & Banners */
 .modal-backdrop {
   z-index: 100;
-  background: rgba(12, 18, 30, 0.48);
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
-  padding: 16px;
+  background: rgba(10, 15, 28, 0.56);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  padding: calc(16px + var(--safe-top, 0px)) 16px calc(18px + var(--safe-bottom, 0px));
   align-items: flex-end;
   animation: backdrop-fade var(--fast) var(--ease);
 }
@@ -951,7 +953,9 @@ nav button.active::after {
   border-radius: 28px;
   padding: 24px;
   box-shadow: 0 24px 80px rgba(12, 20, 38, 0.28);
-  max-height: 85dvh;
+  max-height: min(86dvh, calc(100dvh - 36px - var(--safe-top, 0px) - var(--safe-bottom, 0px)));
+  overflow-y: auto;
+  overscroll-behavior: contain;
   border: 1px solid var(--outline-subtle);
   animation: sheet-spring var(--base) var(--ease);
 }
@@ -1035,9 +1039,15 @@ pre {
 }
 
 @supports (backdrop-filter: blur(12px)) {
-  nav, .composer, .status {
-    backdrop-filter: blur(22px) saturate(165%);
-    -webkit-backdrop-filter: blur(22px) saturate(165%);
+  nav, .composer, .status, .sticker-drawer, .media-composer, .select-popover, .wake-inline-bar {
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+  }
+}
+
+@supports not (backdrop-filter: blur(12px)) {
+  nav, .composer, .status, header, .sticker-drawer, .media-composer, .select-popover, .wake-inline-bar {
+    background: var(--glass-bg-strong);
   }
 }
 
@@ -1053,9 +1063,13 @@ pre {
   --surface-rgb: 23, 30, 43;
   --surface-low-rgb: 19, 25, 36;
   --surface-high-rgb: 32, 41, 58;
-  --surface-border: rgba(255, 255, 255, 0.08);
-  --outline-subtle: rgba(180, 204, 248, 0.12);
-  --glint: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  --surface-border: rgba(255, 255, 255, 0.14);
+  --outline-subtle: rgba(180, 204, 248, 0.14);
+  --glint: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  --glass-bg: rgba(var(--surface-rgb), 0.78);
+  --glass-bg-strong: rgba(var(--surface-rgb), 0.94);
+  --glass-border: 1px solid rgba(180, 204, 248, 0.18);
+  --glass-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.12), inset 0 -1px 0 rgba(0, 0, 0, 0.24);
   --shadow: 0 6px 24px rgba(0, 0, 0, 0.28);
   --shadow-elevated: 0 14px 40px rgba(0, 0, 0, 0.45);
   --danger: #ff8b94;
@@ -1074,9 +1088,13 @@ pre {
     --surface-rgb: 23, 30, 43;
     --surface-low-rgb: 19, 25, 36;
     --surface-high-rgb: 32, 41, 58;
-    --surface-border: rgba(255, 255, 255, 0.08);
-    --outline-subtle: rgba(180, 204, 248, 0.12);
-    --glint: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+    --surface-border: rgba(255, 255, 255, 0.14);
+    --outline-subtle: rgba(180, 204, 248, 0.14);
+    --glint: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    --glass-bg: rgba(var(--surface-rgb), 0.78);
+    --glass-bg-strong: rgba(var(--surface-rgb), 0.94);
+    --glass-border: 1px solid rgba(180, 204, 248, 0.18);
+    --glass-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.12), inset 0 -1px 0 rgba(0, 0, 0, 0.24);
     --shadow: 0 6px 24px rgba(0, 0, 0, 0.28);
     --shadow-elevated: 0 14px 40px rgba(0, 0, 0, 0.45);
     --danger: #ff8b94;
@@ -1150,9 +1168,10 @@ pre {
 }
 
 @media (prefers-reduced-transparency: reduce) {
-  nav, .composer, .status, .bubble, .settings-group, .wake-panel {
-    background: rgb(var(--surface-rgb));
+  nav, .composer, .status, .bubble, .settings-group, .wake-panel, .sticker-drawer, .media-composer, .select-popover, .wake-inline-bar, header {
+    background: var(--glass-bg-strong);
     backdrop-filter: none;
+    -webkit-backdrop-filter: none;
   }
 }
 
@@ -1166,7 +1185,7 @@ nav .nav-indicator {
   border-radius: 3px;
   background: var(--accent);
   transform: translateX(calc(var(--active-tab, 0) * 100%));
-  transition: transform 220ms var(--ease-spring);
+  transition: transform var(--base) var(--ease-spring);
   pointer-events: none;
 }
 

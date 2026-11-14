@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { newQQUser, newQQGroup, newQQWillingness, type NativeBridge, type QQStatus, type QQConversation, type QQMessage, type QQPolicy, type QQUserAccount, type QQGroupRule, type QQWillingnessPreset } from '../../packages/contracts'
+import { SettingsSubpageHeader } from './SettingsSubpageHeader'
 
 const phases: Record<string, string> = { stopped: '尚未连接', installing: '准备组件', starting: '启动中', qr: '等待扫码', confirming: '等待确认', connecting: '连接消息通道', online: '在线', offline: '已离线', failed: '需要检查' }
 const formatTime = (time: number) => new Date(time).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })
@@ -62,8 +63,17 @@ export function Inbox({ bridge, healthy, native, configure, onRootBack, backHand
   const numeric = (label: string, value: number, min: number, max: number, change: (value: number) => void, step: number | 'any' = 1) => <label>{label}<input type="number" required inputMode={step === 1 ? 'numeric' : 'decimal'} min={min} max={max} step={step} value={Number.isFinite(value) ? value : ''} onChange={event => change(event.target.value === '' ? NaN : Number(event.target.value))} /></label>
   const renderRows = (rows: QQConversation[]) => rows.map(row => <button className="letter-row" key={row.id} onClick={() => select(row.id)}><span className="letter-avatar">{row.id.startsWith('group:') ? '群' : row.name.slice(0, 1)}</span><span className="letter-content"><span className="letter-title">{row.name}<time>{formatTime(row.time)}</time></span><span className="letter-preview">{row.last || '新会话'}</span></span>{row.unread > 0 && <span className="letter-unread" aria-label={`${row.unread} 条未读`}>{row.unread > 99 ? '99+' : row.unread}</span>}</button>)
   return <section className="inbox-page accordion">
-    <div className="page-heading"><div><div className="eyebrow">LETTERS FROM EVERYDAY LIFE</div><h1>信箱<span>。</span></h1><p>把故事，接进真实的日常。</p></div><span className="chapter">02 / QQ</span></div>
-    {!selected && onRootBack && <button className="text-button" onClick={onRootBack}>返回空间</button>}
+    {!selected && onRootBack ? (
+      <SettingsSubpageHeader
+        title="信箱"
+        subtitle="把故事，接进真实的日常。"
+        backLabel="返回空间"
+        onBack={onRootBack}
+        trailing={<span className="chapter">02 / QQ</span>}
+      />
+    ) : (
+      <div className="page-heading"><div><div className="eyebrow">LETTERS FROM EVERYDAY LIFE</div><h1>信箱<span>。</span></h1><p>把故事，接进真实的日常。</p></div><span className="chapter">02 / QQ</span></div>
+    )}
     {notice && <div className="notice" role="status"><span>{notice}</span><button onClick={() => setNotice('')} aria-label="关闭 QQ 提示">×</button></div>}
     {!healthy ? <div className="qq-onboarding"><span className="letter-stamp">待启封</span><h2>先让故事开始运行</h2><p>在设置中准备环境、保存模型并启动 HDS，然后回来下载 QQ 组件、扫码登录。</p><ol><li>准备本机环境与角色</li><li>下载 QQ 组件并扫码</li><li>选择允许角色回复的人</li></ol><button className="primary" onClick={configure}>前往设置 →</button><p className="caption">手机本地运行 · 无需电脑常驻或终端配置</p></div> : <>
       <div className="qq-account"><span className={`qq-indicator ${status?.online ? 'online' : ''}`} /><div><strong>{status?.nickname || 'QQ 本地连接'}{status?.account && <small>{status.account}</small>}</strong><span>{phases[status?.phase || 'stopped'] || '等待状态'} · {status?.policy.enabled ? '白名单自动回复' : '自动回复关闭'}</span></div><button onClick={() => setShowLogin(!showLogin)} aria-expanded={showLogin}>{showLogin ? '收起' : '管理'}</button></div>

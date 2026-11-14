@@ -280,11 +280,25 @@ try {
   if (!process.env.HDS_P2_ONLY) {
   if (!process.env.HDS_P1_ONLY) {
   if (!process.env.HDS_M3_ONLY) {
-  await page.getByRole('button', { name: '点击唤醒', exact: true }).waitFor()
+  await page.getByRole('button', { name: '唤醒', exact: true }).waitFor()
+  assert.equal(await page.locator('.wordmark').count(), 0)
+  assert.equal(await page.getByText('未完待续').count(), 0)
+  assert.equal(await page.getByText('等你轻轻唤醒').count(), 0)
+  assert.equal(await page.locator('.chat-wake-stage button').count(), 1)
+  for (const dockWidth of [360, 393]) {
+    await page.setViewportSize({ width: dockWidth, height: 844 })
+    const dock = await page.evaluate(() => {
+      const nav = document.querySelector('.app > nav')?.getBoundingClientRect()
+      const composer = document.querySelector('.composer-wrap')?.getBoundingClientRect()
+      return { gap: nav && composer ? nav.top - composer.bottom : -1 }
+    })
+    assert.ok(dock.gap >= 4 && dock.gap <= 24, `0-msg composer gap=${dock.gap} at ${dockWidth}`)
+  }
+  await page.setViewportSize({ width: 390, height: 844 })
   assert.deepEqual(await page.locator('nav button').allTextContents(), ['故事','见闻','动态','空间'])
   await page.screenshot({ path: 'artifacts/story-resting.png', fullPage: true })
   await page.getByRole('textbox', { name: '消息内容' }).fill('等你醒来')
-  await page.getByRole('button', { name: '点击唤醒', exact: true }).click()
+  await page.getByRole('button', { name: '唤醒', exact: true }).click()
   await page.getByRole('progressbar').waitFor()
   assert.equal(await page.evaluate(() => window.__storyFixture.calls.filter(x => x === 'start').length), 1)
   assert.equal(await page.evaluate(() => window.__storyFixture.calls.includes('install')), false)
@@ -297,11 +311,18 @@ try {
   await page.waitForFunction(() => document.activeElement?.getAttribute('aria-label') === '消息内容')
   assert.equal(await page.getByRole('textbox', { name: '消息内容' }).inputValue(), '等你醒来')
   await page.getByRole('button', { name: '空间', exact: true }).click()
+  assert.equal(await page.locator('.settings-directory .settings-entry svg, .space-home > .settings-entry svg').count(), 0)
   assert.deepEqual(await page.locator('.settings-directory .settings-entry > span > small').allTextContents(), ['回车发送、换行与消息合并', '独立服务、免费渠道与模型', '聊天与动态头像，上传或按人设生成', '固定外观、参考图与自主生图', '服务地址、密钥与模型名称', '对话、记忆、图片识别与检索', '角色库、你的身份与故事设定', '主动联系、情绪与后台运行', '角色说话的音色、合成与用量', '回复提醒与系统权限', '壁纸、字体与阅读样式'])
   assert.equal(await page.locator('.space-home details').count(), 0)
   await page.getByRole('button', { name: /^备份与维护/ }).scrollIntoViewIfNeeded()
   assert.ok(await page.getByRole('button', { name: /^备份与维护/ }).isVisible(), 'Last directory entry is reachable')
   await page.screenshot({ path: 'artifacts/preview9.1-m4/space-home.png', fullPage: true })
+  await page.getByRole('button', { name: /^备份与维护/ }).click()
+  const backHeader = await page.locator('.subpage-back-button[aria-label="返回空间"]').boundingBox()
+  const titleHeading = await page.locator('.subpage-heading-copy h1').boundingBox()
+  assert.ok(backHeader && titleHeading && backHeader.x < titleHeading.x && backHeader.width <= 48, 'Compact top-left back icon button precedes heading')
+  assert.equal(await page.evaluate(() => window.hdsHandleBack()), true)
+  await page.locator('.space-home').waitFor()
   await page.getByRole('button', { name: /信箱与外部连接.*5 条未读/ }).waitFor()
   await page.evaluate(() => { window.__storyFixture.conversations = [{ id: 'private:10001', name: '外部朋友', last: '新信', time: Date.now(), unread: 120 }] })
   await page.getByRole('button', { name: /信箱与外部连接.*120 条未读/ }).waitFor()
@@ -547,10 +568,25 @@ try {
   await page.getByRole('button', { name: '取消', exact: true }).click()
   assert.equal(await page.evaluate(() => window.__storyFixture.calls.includes('exportStory')), false)
   await page.getByRole('button', { name: '导出完整存档', exact: true }).click()
-  await page.getByRole('button', { name: '确认继续', exact: true }).click()
+  await page.getByRole('button', { name: '确认导出', exact: true }).click()
   await page.waitForFunction(() => window.__storyFixture.calls.includes('exportStory'))
   await page.getByText('完整存档已导出；故事已休息，可随时唤醒。', { exact: true }).waitFor()
   assert.equal(await page.evaluate(() => localStorage.getItem('hds-lastCharacterReplyTs-first')), replyWatermarkBeforeExport, 'Export must preserve the reply watermark')
+  // 验证「从当前人设重新开始」Portal 确认弹窗与返回键/二次确认守卫
+  await openCategory('world')
+  assert.equal(await page.locator('.space-detail .settings-entry svg').count(), 0)
+  await openGroup('故事管理')
+  await page.getByRole('button', { name: '从当前人设重新开始', exact: true }).click()
+  const confirmDialog = page.getByRole('dialog', { name: '故事管理确认' })
+  await confirmDialog.waitFor()
+  assert.equal(await confirmDialog.evaluate(el => !el.closest('.space-detail') && el.closest('.confirm-backdrop')?.parentElement === document.body), true)
+  assert.equal(await page.evaluate(() => window.hdsHandleBack()), true)
+  await confirmDialog.waitFor({ state: 'detached' })
+  assert.equal(await page.evaluate(() => window.__storyFixture.calls.includes('resetStory')), false)
+  await page.getByRole('button', { name: '从当前人设重新开始', exact: true }).click()
+  await confirmDialog.getByRole('button', { name: '确认重新开始', exact: true }).click()
+  await page.waitForFunction(() => window.__storyFixture.calls.includes('resetStory'))
+  await confirmDialog.waitFor({ state: 'detached' })
   await page.evaluate(() => { window.__storyFixture.status.state = 'healthy'; window.__storyFixture.messages = [] })
   await page.getByRole('button', { name: '故事', exact: true }).click()
   await page.getByRole('button', { name: '切换角色或故事', exact: true }).click()
@@ -700,7 +736,7 @@ try {
   // M3: exercise native bridge boundaries with real React/DOM, not synthetic successful UI state.
   await page.evaluate(() => { for (const key of Object.keys(localStorage)) if (key.startsWith('hds-draft-') || key === 'hds-stickers-v1') localStorage.removeItem(key) })
   await page.reload()
-  await page.getByRole('button', { name: '点击唤醒', exact: true }).waitFor()
+  await page.getByRole('button', { name: '唤醒', exact: true }).waitFor()
   assert.equal(await page.getByRole('button', { name: '打开表情包', exact: true }).count(), 0)
   await page.evaluate(() => { window.__storyFixture.autoHealthyStart = true; Object.assign(window.__storyFixture.status, { state: 'healthy', running: true, installed: true, environmentState: 'ready' }) })
   await page.waitForFunction(() => document.querySelector('header .status.online'))
@@ -744,7 +780,7 @@ try {
   assert.equal(await m3Composer.inputValue(), '第一位的草稿')
   await page.getByAltText('待发送图片').waitFor()
   await page.reload()
-  await page.getByRole('button', { name: '点击唤醒', exact: true }).waitFor()
+  await page.getByRole('button', { name: '唤醒', exact: true }).waitFor()
   assert.equal(await m3Composer.inputValue(), '第一位的草稿')
   await page.getByAltText('待发送图片').waitFor()
   await page.evaluate(() => Object.assign(window.__storyFixture.status, { state: 'healthy', running: true }))
@@ -816,10 +852,23 @@ try {
   // A WebView restart retains both library and the local message-id marker.
   const sentSticker = await page.evaluate(() => window.__storyFixture.messages)
   await page.reload()
-  await page.getByRole('button', { name: '点击唤醒', exact: true }).waitFor()
+  await page.getByRole('button', { name: '唤醒', exact: true }).waitFor()
   await page.evaluate(rows => { window.__storyFixture.messages = rows; Object.assign(window.__storyFixture.status, { state: 'healthy', running: true }) }, sentSticker)
   await page.locator('.sticker-message').waitFor()
   assert.equal(await page.locator('.sticker-message .bubble').count(), 0)
+  // 校验单条消息时用户表情包右对齐与输入框底栏贴近导航栏
+  const userDockAndAlign = await page.evaluate(() => {
+    const sticker = document.querySelector('.message.user.sticker-message .sticker-body')?.getBoundingClientRect()
+    const list = document.querySelector('.messages')?.getBoundingClientRect()
+    const nav = document.querySelector('.app > nav')?.getBoundingClientRect()
+    const composer = document.querySelector('.composer-wrap')?.getBoundingClientRect()
+    return {
+      stickerRightAligned: Boolean(sticker && list && Math.abs((sticker.x + sticker.width) - (list.x + list.width)) <= 2),
+      gap: nav && composer ? nav.top - composer.bottom : -1
+    }
+  })
+  assert.equal(userDockAndAlign.stickerRightAligned, true, '用户表情包应贴右边界对齐')
+  assert.ok(userDockAndAlign.gap >= 4 && userDockAndAlign.gap <= 24, `单条消息下输入框底栏间距异常: ${userDockAndAlign.gap}`)
   await page.getByRole('button', { name: '打开表情包', exact: true }).waitFor()
   await page.getByRole('button', { name: '发送消息', exact: true }).click()
   await page.waitForFunction(() => document.querySelector('textarea').value === '')
@@ -829,7 +878,7 @@ try {
   // M4 character stickers use runtime media IDs without the user's local message map.
   await page.evaluate(() => localStorage.removeItem('hds-stickers-v1'))
   await page.reload()
-  await page.getByRole('button', { name: '点击唤醒', exact: true }).waitFor()
+  await page.getByRole('button', { name: '唤醒', exact: true }).waitFor()
   assert.equal(await page.getByRole('button', { name: '打开表情包', exact: true }).count(), 0)
   await page.evaluate(dataUri => {
     const f = window.__storyFixture
@@ -856,6 +905,18 @@ try {
     await page.setViewportSize({ width, height: 844 })
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true)
   }
+  const m4Align = await page.evaluate(() => {
+    const list = document.querySelector('.messages')?.getBoundingClientRect()
+    const charBubble = document.querySelector('[data-read-anchor="message-m4-text"] .bubble')?.getBoundingClientRect()
+    const charSticker = document.querySelector('[data-read-anchor="message-m4-standalone"] .sticker-body')?.getBoundingClientRect()
+    const userBubble = document.querySelector('[data-read-anchor="message-m4-user"] .bubble')?.getBoundingClientRect()
+    return {
+      charLeftMatches: Boolean(charBubble && charSticker && list && Math.abs(charSticker.x - charBubble.x) <= 2 && Math.abs(charSticker.x - list.x) <= 2),
+      userRightAligned: Boolean(userBubble && list && Math.abs((userBubble.x + userBubble.width) - (list.x + list.width)) <= 2),
+    }
+  })
+  assert.equal(m4Align.charLeftMatches, true, '角色表情包应贴左对齐并与角色文字气泡左缘一致')
+  assert.equal(m4Align.userRightAligned, true, '用户文字气泡应贴右边界对齐')
   await page.screenshot({ path: 'artifacts/preview9-m4-character-stickers.png' })
   console.log('PASS M4: empty library hides entry; character standalone/after-text GIFs hydrate via media RPC without user mappings, keep sequence and render without bubbles; unknown markers stripped only from character prose; 320/390/740 px layouts.')
   // Long-image scrolling, pinch, pan, dismiss, focus and reduced motion are DOM-observable.
