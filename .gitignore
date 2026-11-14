@@ -40,3 +40,11 @@ android/app/src/main/assets/legal/
 # Delegation transcripts and stderr logs (readable summaries are committed instead)
 HDS-Mobile-Plan/evidence/*.jsonl
 HDS-Mobile-Plan/evidence/*.log
+
+# Root agent task handoffs and raw validation logs (archived under docs/archive/agent-tasks/)
+/agy-task-*.md
+/codex-task-*.md
+/result-*.md
+/result-*.txt
+/result.txt
+/*.log

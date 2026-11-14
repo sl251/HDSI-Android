@@ -4,7 +4,7 @@
 
 测试入口：`npm run test:ui`，包括原 `tests/story-ui.mjs` 和新增 `tests/m5-ui.mjs`。Vite 独立启动在 `127.0.0.1:5185`，退出时清理本轮服务。
 
-本机初始磁盘可用空间为 0、内存约 1 GiB，默认多进程 Chromium 在旧 M3 重载场景出现空白页 / Target crashed；低资源参数曾通过完整回归。随后观测到磁盘恢复约 1.3 GiB 可用空间，最终再次以默认多进程模式通过完整套件，原始输出见 `result-m5.txt` 内的 `ui-default-final.log`。未更改或删除既有断言（原 116 条 assert、83 条 waitFor、41 条 waitForFunction 均逐行保留）。可选 `HDS_BROWSER_LOW_RESOURCES=1` 仅用于受限 CI，默认不启用。
+本机初始磁盘可用空间为 0、内存约 1 GiB，默认多进程 Chromium 在旧 M3 重载场景出现空白页 / Target crashed；低资源参数曾通过完整回归。随后观测到磁盘恢复约 1.3 GiB 可用空间，最终再次以默认多进程模式通过完整套件；原根目录 `result-m5.txt` 中的原始日志 `ui-default-final.log` 已经在仓库整理中移除大体积原始输出，精简验收摘要与可复验命令见 [result-m5-summary.md](../../archive/agent-tasks/result-m5-summary.md)。未更改或删除既有断言（原 116 条 assert、83 条 waitFor、41 条 waitForFunction 均逐行保留）。可选 `HDS_BROWSER_LOW_RESOURCES=1` 仅用于受限 CI，默认不启用。
 
 ## 场景与实际观察
 

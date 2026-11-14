@@ -94,7 +94,7 @@ https://github.com/user-attachments/assets/809470b8-84a5-4e32-ac78-d59d217fac7b
 
 另外，9.6 系列加入了流式聊天、图片与录音输入、按故事隔离的动态和自主生图；9.6.2～9.6.3 继续完善生图协议及任务恢复。
 
-详细变更见 [CHANGELOG](docs/CHANGELOG.md)，9.7 的兼容性和测试范围见 [PREVIEW9.7.md](docs/PREVIEW9.7.md)。
+详细变更见 [CHANGELOG](docs/CHANGELOG.md)，9.7 的兼容性和测试范围见 [PREVIEW9.7.md](docs/PREVIEW9.7.md)，全部文档、计划与归档索引见 [文档导航](docs/README.md)。
 
 ## 🧪 目前的限制
 
