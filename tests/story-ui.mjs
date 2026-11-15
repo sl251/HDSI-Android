@@ -16,11 +16,26 @@ try {
   page.on('pageerror', error => debugMessages.push(error.stack || error.message))
   page.setDefaultTimeout(30000)
   const openCategory = async category => {
-    const labels = { personal: '界面个性化', notifications: '消息通知', intelligence: '模型连接', tasks: '任务分工', advanced: '高级设置', data: '备份与维护', world: '角色与故事', life: '持续生活' }
-    const target = { personal: 'appearance', notifications: 'notifications', intelligence: 'models', tasks: 'tasks', advanced: 'advanced', data: 'system', world: 'world', life: 'life' }[category]
-    if (await page.locator(`[data-settings-category="${target}"]`).count()) return
+    const map = {
+      personal: { entry: '界面个性化与通知', target: 'appearance', tab: '界面与壁纸' },
+      notifications: { entry: '界面个性化与通知', target: 'notifications', tab: '消息通知' },
+      intelligence: { entry: '模型与任务分工', target: 'models', tab: '模型连接' },
+      tasks: { entry: '模型与任务分工', target: 'tasks', tab: '任务分工' },
+      advanced: { entry: '模型与任务分工', target: 'advanced', tab: '高级与节奏' },
+      data: { entry: '备份、诊断与帮助', target: 'system', tab: '存档与设备' },
+      world: { entry: '角色与故事', target: 'world', tab: '角色与叙事' },
+      life: { entry: '持续生活', target: 'life' },
+    }[category]
+    if (await page.locator(`[data-settings-category="${map.target}"]`).count()) {
+      if (map.tab) {
+        const subtab = page.getByRole('tab', { name: map.tab, exact: true })
+        if (await subtab.count()) await subtab.click()
+      }
+      return
+    }
     await page.getByRole('button', { name: '空间', exact: true }).click()
-    await page.getByRole('button', { name: new RegExp(`^${labels[category]}`) }).click()
+    await page.getByRole('button', { name: new RegExp(`^${map.entry}`) }).click()
+    if (map.tab) await page.getByRole('tab', { name: map.tab, exact: true }).click()
   }
   const openGroup = async label => { const summary = page.getByText(label, { exact: true }); if (!await summary.evaluate(el => el.closest('details').open)) await summary.click() }
   const openLibrary = async () => {
@@ -138,9 +153,9 @@ try {
     const rect = element.getBoundingClientRect()
     return rect.width > 0 && rect.height > 0 && rect.left >= 0 && rect.right <= innerWidth && rect.bottom <= innerHeight
   })
-  const guideTitles = ['欢迎来到 HDS', '先认识故事的主角', '连接会回话的模型', '唤醒后，说第一句话', '在见闻里读故事', '信箱里，留意新的来信', '消息出问题，先看这里']
-  const guidePages = ['chat', 'cards', 'settings', 'chat', 'story', 'settings', 'settings']
-  for (let index = 1; index <= 7; index++) {
+  const guideTitles = ['欢迎来到 HDS', '先认识故事的主角', '连接会回话的模型', '唤醒角色，开始对话', '在见闻与动态里记录生活', '消息排查与个性化设置']
+  const guidePages = ['chat', 'cards', 'settings', 'chat', 'story', 'settings']
+  for (let index = 1; index <= 6; index++) {
     await guideStep(index)
     await page.getByRole('dialog', { name: guideTitles[index - 1], exact: true }).waitFor()
     assert.equal(await page.locator('main').getAttribute('data-page'), guidePages[index - 1])
@@ -155,7 +170,7 @@ try {
       await page.keyboard.press('Shift+Tab')
       assert.equal(await page.getByRole('button', { name: '下一步', exact: true }).evaluate(element => element === document.activeElement), true)
     }
-    await page.getByRole('button', { name: index === 7 ? '开始使用' : '下一步', exact: true }).click()
+    await page.getByRole('button', { name: index === 6 ? '开始使用' : '下一步', exact: true }).click()
   }
   await page.locator('.onboarding-overlay').waitFor({ state: 'detached' })
   assert.equal(await page.evaluate(() => localStorage.getItem('hds.onboarding.v1')), '1')
@@ -173,6 +188,8 @@ try {
   await page.reload(); await page.getByRole('textbox', { name: '消息内容' }).waitFor()
   assert.equal(await page.locator('.onboarding-overlay').count(), 0, 'Skipping persists across launches')
   await page.getByRole('button', { name: '空间', exact: true }).click()
+  await page.getByRole('button', { name: /^备份、诊断与帮助/ }).click()
+  await page.getByRole('tab', { name: '诊断与帮助', exact: true }).click()
   const replayGuide = page.getByRole('button', { name: /^重看新手引导/ })
   await replayGuide.click(); await guideStep(1)
   await page.emulateMedia({ reducedMotion: 'reduce', colorScheme: 'dark' })
@@ -183,7 +200,7 @@ try {
   await page.locator('.onboarding-overlay').waitFor({ state: 'detached' })
   await replayGuide.waitFor()
   await page.emulateMedia({ reducedMotion: 'no-preference', colorScheme: 'light' })
-  console.log('PASS P2 onboarding: seven steps, element-ref highlights, 360px cards/touch targets, inert background, keyboard trap, previous/next/finish/skip, persisted marker, replay, native back and reduced motion.')
+  console.log('PASS P2 onboarding: six steps, element-ref highlights, 360px cards/touch targets, inert background, keyboard trap, previous/next/finish/skip, persisted marker, replay, native back and reduced motion.')
 
   const swipe = async (selector, dx, dy = 0, startX = 180, mode = 'normal') => page.locator(selector).first().evaluate((element, args) => {
     const point = (x, y, identifier = 1) => new Touch({ identifier, target: element, clientX: x, clientY: y })
@@ -227,10 +244,10 @@ try {
   assert.equal(await page.evaluate(() => window.hdsHandleBack()), false)
   await page.getByRole('button', { name: '见闻', exact: true }).click(); await checkPage('story', '见闻')
   await page.getByRole('button', { name: '空间', exact: true }).click()
-  await page.getByRole('button', { name: /^模型连接/ }).click()
+  await page.getByRole('button', { name: /^模型与任务分工/ }).click()
   await swipe('main', 100); await checkPage('feed', '动态')
   await swipe('main', -100); await checkPage('settings', '空间')
-  await replayGuide.waitFor()
+  await page.getByRole('button', { name: /^角色与故事/ }).waitFor()
   assert.equal(await page.locator('.space-detail').count(), 0, 'Swipe into settings returns to its root')
   await page.getByRole('button', { name: /^角色语音与音色/ }).click()
   await page.getByRole('button', { name: /音色工作台/ }).click()
@@ -286,7 +303,18 @@ try {
   assert.equal(await page.locator('.wordmark').count(), 0)
   assert.equal(await page.getByText('未完待续').count(), 0)
   assert.equal(await page.getByText('等你轻轻唤醒').count(), 0)
+  assert.equal(await page.getByRole('textbox', { name: '消息内容' }).getAttribute('placeholder'), '发消息…')
+  assert.equal(await page.locator('#image-entry-hint').count(), 0)
   assert.equal(await page.locator('.chat-wake-stage button').count(), 1)
+  // 未唤醒状态点击动态页面“分享此刻”应弹出液态玻璃唤醒提示弹窗
+  await page.getByRole('button', { name: '动态', exact: true }).click()
+  assert.equal(await page.getByText('唤醒故事后可发布与互动。').count(), 0)
+  assert.equal(await page.getByText('第一条动态，从你的今天开始。').count(), 0)
+  await page.getByRole('button', { name: /分享此刻/ }).click()
+  await page.getByRole('dialog', { name: '唤醒角色提示', exact: true }).waitFor()
+  await page.getByRole('button', { name: '稍后', exact: true }).click()
+  await page.getByRole('dialog', { name: '唤醒角色提示', exact: true }).waitFor({ state: 'detached' })
+  await page.getByRole('button', { name: '故事', exact: true }).click()
   for (const dockWidth of [360, 393]) {
     await page.setViewportSize({ width: dockWidth, height: 844 })
     const dock = await page.evaluate(() => {
@@ -305,6 +333,8 @@ try {
   assert.equal(await page.evaluate(() => window.__storyFixture.calls.filter(x => x === 'start').length), 1)
   assert.equal(await page.evaluate(() => window.__storyFixture.calls.includes('install')), false)
   await page.getByRole('button', { name: '见闻', exact: true }).click()
+  assert.equal(await page.locator('.page-heading h1').count(), 0)
+  assert.equal(await page.getByText('之前的经历留在这里，下一句话由你开始。').count(), 0)
   await page.getByRole('progressbar').waitFor()
   await page.evaluate(() => Object.assign(window.__storyFixture.status, { state: 'healthy', installed: true, environmentState: 'ready' }))
   await page.getByRole('button', { name: '此刻心绪', exact: true }).click()
@@ -312,26 +342,36 @@ try {
   await page.getByRole('button', { name: '故事', exact: true }).click()
   await page.waitForFunction(() => document.activeElement?.getAttribute('aria-label') === '消息内容')
   assert.equal(await page.getByRole('textbox', { name: '消息内容' }).inputValue(), '等你醒来')
+  // 验证顶部状态胶囊支持从“在线”直接点按休眠，再重新唤醒继续测试
+  await page.locator('header .status.online').click()
+  await page.locator('header .status:not(.online)').waitFor()
+  assert.match(await page.locator('header .status').innerText(), /已休眠/)
+  await page.locator('header .status').click()
+  await page.evaluate(() => Object.assign(window.__storyFixture.status, { state: 'healthy', installed: true, environmentState: 'ready' }))
+  await page.locator('header .status.online').waitFor()
   await page.getByRole('button', { name: '空间', exact: true }).click()
-  assert.equal(await page.locator('.settings-directory .settings-entry svg, .space-home > .settings-entry svg').count(), 0)
-  assert.deepEqual(await page.locator('.settings-directory .settings-entry > span > small').allTextContents(), ['回车发送、换行与消息合并', '独立服务、免费渠道与模型', '聊天与动态头像，上传或按人设生成', '固定外观、参考图与自主生图', '服务地址、密钥与模型名称', '对话、记忆、图片识别与检索', '角色库、你的身份与故事设定', '主动联系、情绪与后台运行', '角色说话的音色、合成与用量', '回复提醒与系统权限', '壁纸、字体与阅读样式'])
+  assert.equal(await page.locator('.page-heading h1').count(), 0)
+  assert.equal(await page.getByText('故事的节奏').count(), 0)
+  assert.equal(await page.locator('.space-wake .wake-panel').count(), 0)
+  assert.equal(await page.locator('.space-grid .settings-entry svg, .space-home > .settings-entry svg').count(), 0)
+  assert.deepEqual(await page.locator('.space-section-label').allTextContents(), ['角色与叙事', '对话与日常', '模型与多模态', '外观与系统'])
   assert.equal(await page.locator('.space-home details').count(), 0)
-  await page.getByRole('button', { name: /^备份与维护/ }).scrollIntoViewIfNeeded()
-  assert.ok(await page.getByRole('button', { name: /^备份与维护/ }).isVisible(), 'Last directory entry is reachable')
+  await page.getByRole('button', { name: /^备份、诊断与帮助/ }).scrollIntoViewIfNeeded()
+  assert.ok(await page.getByRole('button', { name: /^备份、诊断与帮助/ }).isVisible(), 'Last directory entry is reachable')
   await page.screenshot({ path: 'artifacts/preview9.1-m4/space-home.png', fullPage: true })
-  await page.getByRole('button', { name: /^备份与维护/ }).click()
+  await page.getByRole('button', { name: /^备份、诊断与帮助/ }).click()
   const backHeader = await page.locator('.subpage-back-button[aria-label="返回空间"]').boundingBox()
   const titleHeading = await page.locator('.subpage-heading-copy h1').boundingBox()
   assert.ok(backHeader && titleHeading && backHeader.x < titleHeading.x && backHeader.width <= 48, 'Compact top-left back icon button precedes heading')
   assert.equal(await page.evaluate(() => window.hdsHandleBack()), true)
   await page.locator('.space-home').waitFor()
-  await page.getByRole('button', { name: /信箱与外部连接.*5 条未读/ }).waitFor()
+  await page.getByRole('button', { name: /外部连接与信箱.*5 条未读/ }).waitFor()
   await page.evaluate(() => { window.__storyFixture.conversations = [{ id: 'private:10001', name: '外部朋友', last: '新信', time: Date.now(), unread: 120 }] })
-  await page.getByRole('button', { name: /信箱与外部连接.*120 条未读/ }).waitFor()
+  await page.getByRole('button', { name: /外部连接与信箱.*120 条未读/ }).waitFor()
   await page.evaluate(() => { delete window.__storyFixture.conversations })
-  await page.getByRole('button', { name: /信箱与外部连接.*5 条未读/ }).waitFor()
+  await page.getByRole('button', { name: /外部连接与信箱.*5 条未读/ }).waitFor()
   await page.getByRole('button', { name: '空间', exact: true }).click()
-  await page.getByRole('button', { name: /^信箱与外部连接/ }).click()
+  await page.getByRole('button', { name: /^外部连接与信箱/ }).click()
   await page.locator('.inbox-page').waitFor()
   assert.equal(await page.getByRole('button', { name: '返回空间', exact: true }).count(), 1)
   assert.equal(await page.evaluate(() => window.hdsHandleBack()), true)
@@ -339,7 +379,7 @@ try {
   // Inbox always returns to its Space entry, preserving its nested back behavior.
   await page.getByRole('button', { name: '见闻', exact: true }).click()
   await page.getByRole('button', { name: '空间', exact: true }).click()
-  await page.getByRole('button', { name: /^信箱与外部连接/ }).click()
+  await page.getByRole('button', { name: /^外部连接与信箱/ }).click()
   await page.getByRole('button', { name: /外部朋友/ }).click()
   await page.getByRole('button', { name: '← 返回信件', exact: true }).waitFor()
   await page.getByRole('button', { name: /角色自动回复/ }).click()
@@ -609,7 +649,7 @@ try {
     await openCategory('personal')
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true, `Expanded settings @ ${width}`)
     await page.getByRole('button', { name: '空间', exact: true }).click()
-    await page.getByRole('button', { name: /^信箱与外部连接/ }).click()
+    await page.getByRole('button', { name: /^外部连接与信箱/ }).click()
     await page.locator('.inbox-page').waitFor()
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true, `Inbox @ ${width}`)
     await openLibrary()
@@ -790,6 +830,7 @@ try {
   await page.getByRole('button', { name: '空间', exact: true }).click()
   await openCategory('personal')
   await page.getByRole('button', { name: '空间', exact: true }).click()
+  await page.getByRole('button', { name: /^聊天与输入/ }).click()
   await page.getByRole('button', { name: /^表情包/ }).click()
   await page.getByRole('dialog', { name: '表情包管理' }).waitFor()
   await page.evaluate(() => { window.__storyFixture.nextStickerImport = { cancelled: false, name: '开心包', assets: [0,1].map(() => ({ id: 'b'.repeat(64), path: '/private/hds/stickers/happy.gif', size: 42, mime: 'image/gif' })), skipped: 1 } })
@@ -846,11 +887,15 @@ try {
   await page.getByAltText('待发送图片').waitFor()
   assert.equal(await page.evaluate(() => window.__storyFixture.sent.content), '')
   await page.getByRole('button', { name: '打开表情包', exact: true }).click()
+  assert.equal(await page.getByRole('button', { name: '打开表情包', exact: true }).getAttribute('aria-expanded'), 'true')
+  assert.equal(await page.locator('.sticker-drawer .section-title').count(), 0)
   await page.getByRole('button', { name: '发送最近表情', exact: true }).waitFor()
   await swipe('.sticker-drawer', -100)
   await checkPage('chat', '故事')
   assert.equal(await page.getByRole('region', { name: '表情抽屉' }).count(), 1, 'Drawer gestures preserve both the page and drawer')
-  await page.getByRole('button', { name: '收起表情抽屉' }).click()
+  await page.locator('.messages').click({ position: { x: 12, y: 12 } })
+  await page.getByRole('region', { name: '表情抽屉' }).waitFor({ state: 'detached' })
+  assert.equal(await page.getByRole('button', { name: '打开表情包', exact: true }).getAttribute('aria-expanded'), 'false')
   // A WebView restart retains both library and the local message-id marker.
   const sentSticker = await page.evaluate(() => window.__storyFixture.messages)
   await page.reload()
@@ -1076,6 +1121,8 @@ try {
     f.diagnosticEvents.unshift({ id: 'p1-older-focus', at: now - 3600000, requestIds: ['p1-target-message'], stage: 'model', outcome: 'failed', reason: 'network', providerSlot: 2 })
   })
   await page.getByRole('button', { name: '空间', exact: true }).click()
+  await page.getByRole('button', { name: /^备份、诊断与帮助/ }).click()
+  await page.getByRole('tab', { name: '诊断与帮助', exact: true }).click()
   await page.getByRole('button', { name: /^消息诊断/ }).click()
   await page.waitForFunction(() => document.querySelectorAll('.diagnostic-message-card').length === 200)
   assert.equal(await p1Dialog.locator('.diagnostic-events').count(), 0, 'Details remain unmounted until expanded')

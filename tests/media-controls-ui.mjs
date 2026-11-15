@@ -25,7 +25,8 @@ try {
   })
   const open = async () => {
     await page.getByRole('button', { name: '空间', exact: true }).click()
-    await page.getByRole('button', { name: /^表情包/ }).click()
+    await page.getByRole('button', { name: /^聊天与输入/ }).click()
+    await page.getByRole('button', { name: /^表情包管理/ }).click()
   }
   await page.setViewportSize({ width: 390, height: 844 })
   await f.load(); await open()
