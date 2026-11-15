@@ -24,6 +24,21 @@
   --glass-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.7), inset 0 -1px 0 rgba(255, 255, 255, 0.14);
   --glass-shadow: var(--shadow-elevated);
   --glass-blur: blur(22px) saturate(165%);
+  --liquid-glass-filter: blur(18px) saturate(210%) brightness(1.05);
+  --liquid-glass-bg:
+    linear-gradient(155deg, rgba(255, 255, 255, 0.56) 0%, rgba(255, 255, 255, 0.24) 48%, rgba(255, 255, 255, 0.36) 100%),
+    color-mix(in srgb, var(--accent-soft) 14%, rgba(var(--surface-rgb), 0.22));
+  --liquid-glass-border: 1px solid rgba(255, 255, 255, 0.78);
+  --liquid-glass-shadow:
+    inset 0 1.5px 1px rgba(255, 255, 255, 0.9),
+    inset 0 -1.5px 2px rgba(255, 255, 255, 0.42),
+    inset 1px 0 1px rgba(255, 255, 255, 0.5),
+    0 18px 42px rgba(15, 23, 42, 0.14),
+    0 4px 12px rgba(15, 23, 42, 0.05);
+  --liquid-item-bg: rgba(255, 255, 255, 0.28);
+  --liquid-item-border: rgba(255, 255, 255, 0.52);
+  --liquid-nav-active-bg: color-mix(in srgb, var(--accent-soft) 52%, rgba(255, 255, 255, 0.34));
+  --liquid-nav-active-border: color-mix(in srgb, var(--accent) 26%, rgba(255, 255, 255, 0.74));
   --glass-focus-border: color-mix(in srgb, var(--accent) 44%, var(--outline-subtle));
   --glass-focus-ring: 0 0 0 2px color-mix(in srgb, var(--accent) 16%, transparent);
   --danger: #d93848;
@@ -77,19 +92,215 @@ body {
   pointer-events: none;
 }
 
-/* 顶部运行状态栏 */
+/* 顶部运行状态栏（将毛玻璃层放到伪元素，避免阻断下拉浮层对正文与壁纸的折射模糊） */
 header {
   position: sticky;
   top: 0;
   z-index: 10;
   flex: none;
-  justify-content: flex-end;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
   border-bottom: 1px solid var(--outline-subtle);
-  padding-top: calc(10px + var(--safe-top));
-  padding-bottom: 8px;
+  padding: calc(10px + var(--safe-top)) 16px 10px;
+  background: transparent;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
+}
+
+header::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
   background: var(--glass-bg);
   backdrop-filter: var(--glass-blur);
   -webkit-backdrop-filter: var(--glass-blur);
+}
+
+header > * {
+  position: relative;
+  z-index: 1;
+}
+
+@media (min-width: 600px) {
+  header {
+    padding-left: 45px;
+    padding-right: 45px;
+  }
+}
+
+header:has(.character-dropdown) {
+  z-index: 60;
+}
+
+.header-leading {
+  position: relative;
+  z-index: 2;
+  min-width: 0;
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+}
+
+.character-dropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  z-index: 62;
+  width: min(278px, calc(100vw - 28px));
+  max-height: min(68dvh, 420px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 10px;
+  border-radius: 24px;
+  border: var(--liquid-glass-border);
+  background: var(--liquid-glass-bg);
+  backdrop-filter: var(--liquid-glass-filter);
+  -webkit-backdrop-filter: var(--liquid-glass-filter);
+  box-shadow: var(--liquid-glass-shadow);
+  transform-origin: top left;
+  animation: character-dropdown-in var(--base) var(--ease-spring) both;
+}
+
+@keyframes character-dropdown-in {
+  from {
+    opacity: 0;
+    transform: translate3d(0, -8px, 0) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+.character-dropdown-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.character-dropdown-empty {
+  margin: 4px 6px 8px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.character-dropdown-divider {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--outline-subtle), transparent);
+  margin: 8px 6px;
+}
+
+.character-dropdown-library {
+  width: 100%;
+  min-height: 50px;
+  padding: 9px 11px;
+  border-radius: 17px;
+  border: 1px solid color-mix(in srgb, var(--accent) 24%, var(--liquid-item-border));
+  background: color-mix(in srgb, var(--accent-soft) 24%, var(--liquid-item-bg));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.42);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-align: left;
+  color: var(--ink);
+  transition: transform var(--fast) var(--ease-spring), background-color var(--fast) var(--ease), border-color var(--fast) var(--ease);
+}
+
+.character-dropdown-library:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+.character-dropdown-library-icon {
+  width: 32px;
+  height: 32px;
+  flex: none;
+  border-radius: 11px;
+  display: grid;
+  place-items: center;
+  background: color-mix(in srgb, var(--accent) 16%, rgba(var(--surface-rgb), 0.7));
+  border: 1px solid color-mix(in srgb, var(--accent) 28%, rgba(255, 255, 255, 0.5));
+  color: var(--accent);
+}
+
+.character-dropdown-library-icon svg {
+  width: 16px;
+  height: 16px;
+}
+
+.character-dropdown-library-copy {
+  min-width: 0;
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.character-dropdown-library-copy strong {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--ink);
+  line-height: 1.25;
+}
+
+.character-dropdown-library-copy small {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--muted);
+  line-height: 1.3;
+}
+
+.character-dropdown-library-arrow {
+  width: 24px;
+  height: 24px;
+  flex: none;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  background: rgba(var(--surface-rgb), 0.56);
+  border: 1px solid var(--liquid-item-border);
+  color: var(--accent);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.header-actions {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.header-chat-settings {
+  min-height: 36px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--outline-subtle);
+  background: rgba(var(--surface-rgb), 0.78);
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  white-space: nowrap;
+  box-shadow: var(--glint), 0 2px 8px rgba(0, 0, 0, 0.03);
+  transition: transform var(--fast) var(--ease-spring), background-color var(--fast) var(--ease), border-color var(--fast) var(--ease);
+}
+
+.header-chat-settings svg {
+  width: 15px;
+  height: 15px;
+  color: var(--muted);
+}
+
+.header-chat-settings:active {
+  transform: scale(0.95);
+  background: var(--surface-alt);
 }
 
 /* FlClash Core Status Pill */
@@ -101,8 +312,10 @@ header {
   font-size: 12px;
   font-weight: 600;
   color: var(--muted);
-  max-width: 68%;
+  max-width: 100%;
   min-height: 36px;
+  flex-wrap: nowrap;
+  white-space: nowrap;
   box-shadow: var(--glint), 0 2px 10px rgba(0, 0, 0, 0.04);
   transition: transform var(--fast) var(--ease-spring), background-color var(--base) var(--ease), border-color var(--base) var(--ease), box-shadow var(--base) var(--ease);
 }
@@ -175,27 +388,91 @@ h2 {
   display: inline-flex;
   align-items: center;
   min-height: 38px;
-  padding: 2px 6px 2px 0;
-  border-radius: 14px;
+  max-width: 100%;
+  padding: 4px 10px 4px 4px;
+  border-radius: 999px;
+  border: 1px solid var(--outline-subtle);
+  background: rgba(var(--surface-rgb), 0.88);
   gap: 8px;
   line-height: 1.2;
-  transition: transform var(--fast) var(--ease-spring), color var(--fast) var(--ease);
+  box-shadow: var(--glint), 0 2px 10px rgba(0, 0, 0, 0.04);
+  transition: transform var(--fast) var(--ease-spring), background-color var(--fast) var(--ease), border-color var(--fast) var(--ease);
 }
 
-.character-switch span {
-  font-family: var(--ui-font);
-  font-size: 15px;
-  width: 24px;
-  height: 24px;
+.character-switch:active {
+  transform: scale(0.96);
+  background: var(--surface-alt);
+}
+
+.character-switch .header-char-avatar {
+  position: relative;
+  width: 28px;
+  height: 28px;
+  flex: none;
+  border-radius: 50%;
+  overflow: hidden;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding-bottom: 6px;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--accent-soft) 84%, white 16%), color-mix(in srgb, var(--accent) 22%, transparent));
+  border: 1px solid color-mix(in srgb, var(--accent) 20%, transparent);
+  color: var(--accent);
+  font-family: var(--ui-font);
+  font-size: 13px;
+  font-weight: 700;
+  opacity: 1;
+}
+
+.character-switch .header-char-avatar[data-initial]::before {
+  content: attr(data-initial);
+  line-height: 1;
+}
+
+.character-switch .header-char-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.character-switch .header-char-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--ui-font);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+  opacity: 1;
+  letter-spacing: -0.1px;
+}
+
+.character-switch.is-open {
+  border-color: color-mix(in srgb, var(--accent) 44%, transparent);
+  background: rgba(var(--surface-rgb), 0.96);
+}
+
+.character-switch .header-char-chevron {
+  font-family: var(--ui-font);
+  font-size: 13px;
+  width: 20px;
+  height: 20px;
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding-bottom: 4px;
   line-height: 1;
   border-radius: 50%;
   background: var(--accent-soft);
   color: var(--accent);
   opacity: 1;
+  transition: transform var(--fast) var(--ease);
+}
+
+.character-switch.is-open .header-char-chevron {
+  transform: rotate(180deg) translateY(-3px);
 }
 
 main {
@@ -897,11 +1174,13 @@ nav {
   bottom: calc(10px + var(--safe-bottom, 0px));
   width: calc(100% - 32px);
   max-width: 520px;
-  border: var(--glass-border);
+  border: var(--liquid-glass-border);
   border-radius: 999px;
   padding: 6px 8px;
-  background: var(--glass-bg);
-  box-shadow: var(--glass-highlight), var(--glass-shadow);
+  background: var(--liquid-glass-bg);
+  backdrop-filter: var(--liquid-glass-filter);
+  -webkit-backdrop-filter: var(--liquid-glass-filter);
+  box-shadow: var(--liquid-glass-shadow);
   z-index: 10;
 }
 
@@ -909,14 +1188,16 @@ nav button {
   position: relative;
   min-width: 0;
   flex: 1 1 0;
+  border: 1px solid transparent;
   border-radius: 999px;
   font-size: 11px;
   font-weight: 600;
   gap: 3px;
-  color: var(--muted);
+  color: var(--ink);
+  opacity: 0.72;
   min-height: 54px;
   letter-spacing: 0;
-  transition: transform var(--fast) var(--ease-spring), background-color var(--base) var(--ease), color var(--base) var(--ease);
+  transition: transform var(--fast) var(--ease-spring), background-color var(--base) var(--ease), color var(--base) var(--ease), opacity var(--fast) var(--ease), box-shadow var(--fast) var(--ease);
 }
 
 nav button svg {
@@ -924,8 +1205,11 @@ nav button svg {
 }
 
 nav button.active {
-  background: var(--accent-soft);
+  background: var(--liquid-nav-active-bg);
+  border: 1px solid var(--liquid-nav-active-border);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.55);
   color: var(--accent);
+  opacity: 1;
 }
 
 nav button.active svg {
@@ -1039,9 +1323,13 @@ pre {
 }
 
 @supports (backdrop-filter: blur(12px)) {
-  nav, .composer, .status, .sticker-drawer, .media-composer, .select-popover, .wake-inline-bar {
+  .composer, .status, .sticker-drawer, .media-composer, .select-popover, .wake-inline-bar {
     backdrop-filter: var(--glass-blur);
     -webkit-backdrop-filter: var(--glass-blur);
+  }
+  nav, .character-dropdown {
+    backdrop-filter: var(--liquid-glass-filter);
+    -webkit-backdrop-filter: var(--liquid-glass-filter);
   }
 }
 
@@ -1070,6 +1358,19 @@ pre {
   --glass-bg-strong: rgba(var(--surface-rgb), 0.94);
   --glass-border: 1px solid rgba(180, 204, 248, 0.18);
   --glass-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.12), inset 0 -1px 0 rgba(0, 0, 0, 0.24);
+  --liquid-glass-filter: blur(18px) saturate(200%) brightness(1.06);
+  --liquid-glass-bg:
+    linear-gradient(155deg, rgba(255, 255, 255, 0.14) 0%, rgba(255, 255, 255, 0.04) 48%, rgba(255, 255, 255, 0.08) 100%),
+    color-mix(in srgb, var(--accent-soft) 24%, rgba(16, 22, 36, 0.42));
+  --liquid-glass-border: 1px solid rgba(255, 255, 255, 0.24);
+  --liquid-glass-shadow:
+    inset 0 1.5px 1px rgba(255, 255, 255, 0.28),
+    inset 0 -1px 1.5px rgba(255, 255, 255, 0.08),
+    0 20px 46px rgba(0, 0, 0, 0.46);
+  --liquid-item-bg: rgba(255, 255, 255, 0.07);
+  --liquid-item-border: rgba(255, 255, 255, 0.16);
+  --liquid-nav-active-bg: color-mix(in srgb, var(--accent-soft) 56%, rgba(255, 255, 255, 0.1));
+  --liquid-nav-active-border: color-mix(in srgb, var(--accent) 34%, rgba(255, 255, 255, 0.24));
   --shadow: 0 6px 24px rgba(0, 0, 0, 0.28);
   --shadow-elevated: 0 14px 40px rgba(0, 0, 0, 0.45);
   --danger: #ff8b94;
@@ -1095,6 +1396,19 @@ pre {
     --glass-bg-strong: rgba(var(--surface-rgb), 0.94);
     --glass-border: 1px solid rgba(180, 204, 248, 0.18);
     --glass-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.12), inset 0 -1px 0 rgba(0, 0, 0, 0.24);
+    --liquid-glass-filter: blur(18px) saturate(200%) brightness(1.06);
+    --liquid-glass-bg:
+      linear-gradient(155deg, rgba(255, 255, 255, 0.14) 0%, rgba(255, 255, 255, 0.04) 48%, rgba(255, 255, 255, 0.08) 100%),
+      color-mix(in srgb, var(--accent-soft) 24%, rgba(16, 22, 36, 0.42));
+    --liquid-glass-border: 1px solid rgba(255, 255, 255, 0.24);
+    --liquid-glass-shadow:
+      inset 0 1.5px 1px rgba(255, 255, 255, 0.28),
+      inset 0 -1px 1.5px rgba(255, 255, 255, 0.08),
+      0 20px 46px rgba(0, 0, 0, 0.46);
+    --liquid-item-bg: rgba(255, 255, 255, 0.07);
+    --liquid-item-border: rgba(255, 255, 255, 0.16);
+    --liquid-nav-active-bg: color-mix(in srgb, var(--accent-soft) 56%, rgba(255, 255, 255, 0.1));
+    --liquid-nav-active-border: color-mix(in srgb, var(--accent) 34%, rgba(255, 255, 255, 0.24));
     --shadow: 0 6px 24px rgba(0, 0, 0, 0.28);
     --shadow-elevated: 0 14px 40px rgba(0, 0, 0, 0.45);
     --danger: #ff8b94;
@@ -1138,11 +1452,37 @@ pre {
   }
 }
 
+@media (max-width: 379px) {
+  .header-chat-settings-label {
+    display: none;
+  }
+  .header-chat-settings {
+    width: 36px;
+    min-width: 36px;
+    padding: 0;
+  }
+  .character-switch {
+    padding: 3px 8px 3px 3px;
+    gap: 6px;
+  }
+  .character-switch .header-char-name {
+    font-size: 13px;
+  }
+  .status {
+    font-size: 11px;
+    padding: 6px 10px;
+  }
+}
+
 @media (max-width: 360px) {
+  header {
+    padding-left: 14px;
+    padding-right: 14px;
+  }
   .model-center > .settings-group,
   section.settings-group {
-    padding-left: 15px;
-    padding-right: 15px;
+    padding-left: 16px;
+    padding-right: 16px;
   }
   .page-heading h1 {
     font-size: 24px;
@@ -1168,7 +1508,7 @@ pre {
 }
 
 @media (prefers-reduced-transparency: reduce) {
-  nav, .composer, .status, .bubble, .settings-group, .wake-panel, .sticker-drawer, .media-composer, .select-popover, .wake-inline-bar, header {
+  nav, .composer, .status, .bubble, .settings-group, .wake-panel, .sticker-drawer, .media-composer, .select-popover, .wake-inline-bar, header::before, .character-dropdown {
     background: var(--glass-bg-strong);
     backdrop-filter: none;
     -webkit-backdrop-filter: none;

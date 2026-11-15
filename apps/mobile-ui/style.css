@@ -141,7 +141,7 @@ main.page-edge{transform:translateX(calc(var(--page-offset,0px) / 3));transition
 .space-home section { padding:16px 0; }
 .space-home .settings-entry { min-height:64px; }
 .space-home .wake-panel { margin:0; }
-.space-detail > section:not(.modal) { padding:12px 0; }
+.space-detail > section:not(.modal):not(.settings-group):not(.life-settings):not(.experience-settings) { padding:12px 0; }
 .space-detail .settings-group, .space-detail .life-settings { margin:0; }
 .space-detail details { margin:8px 0; }
 .space-detail summary small { display:block; color:var(--muted); margin-top:4px; }

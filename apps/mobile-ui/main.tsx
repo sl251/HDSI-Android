@@ -230,6 +230,22 @@ function App() {
   const [diagnostic, setDiagnostic] = useState<Record<string, unknown> | null>(null)
   const navigation = useRef<HTMLElement>(null)
   const headerRef = useRef<HTMLElement>(null)
+  const switcherAnchorRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (!switcher) return
+    const handlePointerDown = (event: PointerEvent) => {
+      if (!switcherAnchorRef.current?.contains(event.target as Node)) setSwitcher(false)
+    }
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') { event.preventDefault(); setSwitcher(false) }
+    }
+    document.addEventListener('pointerdown', handlePointerDown)
+    document.addEventListener('keydown', handleKeyDown)
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDown)
+      document.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [switcher])
   useEffect(() => {
     const viewport = window.visualViewport
     if (!viewport) return
@@ -291,6 +307,7 @@ function App() {
   }
   const selectTab = (next: Tab, direction = 0) => next === 'settings' ? openSpace(null, direction) : setPage(next, direction)
   const prepareOnboarding = (target: OnboardingTarget) => {
+    setSwitcher(false)
     cancelPageMotion(); setPageMotion({ phase: 'idle', direction: 0 }); touchStart.current = null
     if (target === 'library') updatePage('cards')
     else if (target === 'models' || target === 'help') { setSpacePage(null); updatePage('settings') }
@@ -308,7 +325,7 @@ function App() {
     touchStart.current = null
     if (onboardingOpen || pageMotion.phase !== 'idle' || event.touches.length !== 1 || !tabs.includes(page as Tab)) return
     const target = event.target as HTMLElement
-    if (target.closest('.modal-backdrop, .sticker-drawer, .composer-wrap, .select-field, .select-popover, input, textarea, select, audio, [contenteditable="true"]') || document.querySelector('[aria-modal="true"], .image-viewer')) return
+    if (target.closest('.modal-backdrop, .sticker-drawer, .composer-wrap, .select-field, .select-popover, .character-dropdown, input, textarea, select, audio, [contenteditable="true"]') || document.querySelector('[aria-modal="true"], .image-viewer')) return
     const touch = event.touches[0]
     // Leave the screen edges to the system's back gesture.
     if (touch.clientX <= 24 || touch.clientX >= innerWidth - 24) return
@@ -766,7 +783,86 @@ function App() {
   return <>
     {appearance.value.backgroundData && <BackgroundImage source={appearance.value.backgroundData} opacity={appearance.value.backgroundOpacity} blur={appearance.value.backgroundBlur} failed={() => setNotice('背景图片无法显示，请在界面设置中重新选择图片。')} />}
     <div className={`app${appearance.value.backgroundData ? ' has-photo-bg' : ''}`} ref={appShell}><NotificationBanner bridge={bridge} native={native} cardId={selected} messages={messages} reading={page === 'chat'} name={characterName} open={() => setPage('chat')} />
-    <header ref={headerRef}><div className="header-actions" ref={onboardingTargets.welcome as React.RefObject<HTMLDivElement>}><button className={`status ${runtime?.state === 'healthy' ? 'online' : ''}`} disabled={busy || transitioning || (native && !settingsReady)} onClick={() => healthy ? setPage('chat') : native ? void wake() : openSpace(null)}><i />{runtimeLabel}</button></div></header>
+    <header ref={headerRef}>
+      <div className="header-leading" ref={switcherAnchorRef}>
+        <button
+          type="button"
+          className={`character-switch header-character-switch${switcher ? ' is-open' : ''}`}
+          aria-label="切换角色或故事"
+          aria-expanded={switcher}
+          aria-haspopup="dialog"
+          aria-controls="header-character-dropdown"
+          onClick={() => setSwitcher(open => !open)}
+        >
+          <span className="header-char-avatar" aria-hidden="true" data-initial={avatar.source ? undefined : (characterName || '此').slice(0, 1)}>
+            {avatar.source && <img src={avatar.source} alt="" />}
+          </span>
+          <span className="header-char-name">{characterName || '此刻之外'}</span>
+          <span className="header-char-chevron" aria-hidden="true">⌄</span>
+        </button>
+        {switcher && (
+          <div id="header-character-dropdown" className="character-dropdown" role="dialog" aria-label="选择角色或故事">
+            <div className="character-dropdown-list">
+              {cards.map(saved => (
+                <button
+                  type="button"
+                  className={`story-choice character-dropdown-item${saved.id === selected ? ' active' : ''}`}
+                  disabled={busy || sending || transitioning}
+                  key={saved.id}
+                  onClick={() => switchCard(saved.id)}
+                >
+                  <span className="story-choice-main">
+                    <span
+                      className="story-choice-avatar"
+                      aria-hidden="true"
+                      data-initial={saved.id === selected && avatar.source ? undefined : saved.card.name.slice(0, 1)}
+                    >
+                      {saved.id === selected && avatar.source && <img src={avatar.source} alt="" />}
+                    </span>
+                    <span className="character-dropdown-name">{saved.card.name}</span>
+                  </span>
+                  <small>{saved.id === selected ? '当前故事' : '继续故事 →'}</small>
+                </button>
+              ))}
+              {!cards.length && <p className="character-dropdown-empty">还没有角色，先导入或创建一个吧。</p>}
+            </div>
+            <div className="character-dropdown-divider" aria-hidden="true" />
+            <button
+              type="button"
+              className="character-dropdown-library"
+              aria-label="导入、创建与管理角色"
+              onClick={() => { setSwitcher(false); setPage('cards') }}
+            >
+              <span className="character-dropdown-library-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="4" y="4" width="12" height="16" rx="3" />
+                  <path d="M16 7h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H9" />
+                  <circle cx="10" cy="10" r="2" />
+                  <path d="M7.5 15.5a3.5 3.5 0 0 1 5 0" />
+                </svg>
+              </span>
+              <span className="character-dropdown-library-copy">
+                <strong>人格与角色库</strong>
+                <small>导入 · 创建 · 修改人设</small>
+              </span>
+              <span className="character-dropdown-library-arrow" aria-hidden="true">→</span>
+            </button>
+          </div>
+        )}
+      </div>
+      <div className="header-actions" ref={onboardingTargets.welcome as React.RefObject<HTMLDivElement>}>
+        {page === 'chat' && (
+          <button type="button" className="header-chat-settings" aria-label="聊天设置" title="聊天设置" onClick={() => openSpace('chat')}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
+              <circle cx="12" cy="12" r="3" />
+            </svg>
+            <span className="header-chat-settings-label">聊天设置</span>
+          </button>
+        )}
+        <button className={`status ${runtime?.state === 'healthy' ? 'online' : ''}`} disabled={busy || transitioning || (native && !settingsReady)} onClick={() => healthy ? setPage('chat') : native ? void wake() : openSpace(null)}><i />{runtimeLabel}</button>
+      </div>
+    </header>
     <main className={`accordion page-transition page-${pageMotion.phase}`} style={{ '--page-offset': `${pageMotion.direction * 24}px`, '--page-duration': '180ms' } as React.CSSProperties} key={page} data-page={page} onTouchStart={beginSwipe} onTouchMove={event => { if (event.touches.length !== 1) touchStart.current = null }} onTouchEnd={endSwipe} onTouchCancel={() => { touchStart.current = null }} onBlurCapture={() => { void persistSettings().catch(() => {}) }}>
       {notice && <div className="notice" role="status"><span>{notice}</span><button aria-label="关闭提示" onClick={() => setNotice('')}>×</button></div>}
       {restartNeeded && <div className="restart-banner" role="status"><div><b>新配置已就绪</b><span>重启后生效，剧情与记忆会保留。</span></div><button disabled={busy || sending || transitioning} onClick={restart}>立即重启生效</button></div>}
@@ -775,7 +871,6 @@ function App() {
       {page === 'feed' && (experience.settings.feedEnabled ? <Feed avatar={avatar.source} cardId={selected} key={selected} bridge={scopedBridge} snapshot={experience.snapshot} refresh={experience.refresh} healthy={healthy} name={characterName} /> : <div className="quiet-empty">动态已关闭。<button onClick={() => openSpace('chat')}>前往设置</button></div>)}
       {page === 'feed' && <div className="feed-job-dock"><MediaJobNotice jobs={experience.snapshot.jobs.filter(job => job.purpose === 'feed')} bridge={scopedBridge} healthy={healthy} refresh={experience.refresh} diagnose={setMessageDiagnostic} /></div>}
       {page === 'chat' && <>
-        <div className="page-heading"><div><h1><button className="character-switch" aria-label="切换角色或故事" onClick={() => setSwitcher(true)}>{characterName || '此刻之外'}<span aria-hidden="true">⌄</span></button></h1></div><button className="text-button" onClick={() => openSpace('chat')}>聊天设置</button></div>
         {healthy && <div className="history-toolbar"><button className="text-button" onClick={() => setHistorySearch(true)}>查找聊天记录</button>{hasOlder && <button className="secondary" disabled={loadingOlder} onClick={() => void loadOlder()}>{loadingOlder ? '正在读取…' : '加载更早消息'}</button>}</div>}
         <div className="chat-stage">
           {!displayMessages.length && !experience.snapshot.streams.length && requestState !== 'sending' && !typing ? (
@@ -785,15 +880,48 @@ function App() {
               <div className="chat-wake-stage" role="status">
                 {transitioning ? (
                   <div className="wake-progress-inline">
+                    <span className="wake-core-orb is-pulsing" aria-hidden="true">
+                      <svg className="wake-orbit-svg" viewBox="0 0 44 44" fill="none">
+                        <circle cx="22" cy="22" r="19" stroke="currentColor" strokeWidth="1.4" strokeDasharray="18 12" opacity="0.65" />
+                      </svg>
+                      <svg className="wake-spark-svg" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M12 2.5L14.2 9.8L21.5 12L14.2 14.2L12 21.5L9.8 14.2L2.5 12L9.8 9.8L12 2.5Z" />
+                      </svg>
+                    </span>
                     <progress aria-label={runtimeLabel} />
-                    <span>{runtimeLabel}</span>
+                    <span className="wake-progress-label">{runtimeLabel}</span>
                     {runtime?.state === 'installing' && <small>首次准备约 1 分钟，请稍候…</small>}
                     {runtime?.state === 'installing' && <button type="button" className="text-button" onClick={() => act(() => bridge.cancelInstall())}>取消准备</button>}
                   </div>
                 ) : (
-                  <button type="button" className="primary wake-cta" disabled={chatWakeDisabled} onClick={triggerPrimaryWake}>
-                    {wakeActionLabel}
-                  </button>
+                  <div className="wake-hero">
+                    <span className="wake-aura-glow" aria-hidden="true" />
+                    <span className="wake-aura-ring" aria-hidden="true" />
+                    <span className="wake-aura-ring wake-aura-ring-2" aria-hidden="true" />
+                    <button
+                      type="button"
+                      className={`wake-cta${runtime?.state === 'failed' ? ' is-retry' : ''}`}
+                      aria-label={wakeActionLabel}
+                      disabled={chatWakeDisabled}
+                      onClick={triggerPrimaryWake}
+                    >
+                      <span className="wake-core-orb" aria-hidden="true">
+                        <svg className="wake-orbit-svg" viewBox="0 0 44 44" fill="none">
+                          <circle cx="22" cy="22" r="19" stroke="currentColor" strokeWidth="1.4" strokeDasharray="16 10 4 10" opacity="0.72" />
+                        </svg>
+                        <svg className="wake-spark-svg" viewBox="0 0 24 24" fill="currentColor">
+                          <path d="M12 2.5L14.2 9.8L21.5 12L14.2 14.2L12 21.5L9.8 14.2L2.5 12L9.8 9.8L12 2.5Z" />
+                        </svg>
+                      </span>
+                      <span className="wake-cta-copy" aria-hidden="true">
+                        <strong className="wake-cta-title">{wakeActionLabel}</strong>
+                        <small className="wake-cta-sub">{!active ? '先选择一位主角' : !modelReady ? '前往连接对话模型' : runtime?.state === 'failed' ? '连接未完成 · 点击重试' : `${characterName || '故事核心'} · 轻触唤醒`}</small>
+                      </span>
+                      <span className="wake-cta-wave" aria-hidden="true">
+                        <i /><i /><i />
+                      </span>
+                    </button>
+                  </div>
                 )}
                 {runtime?.error && <p className="error wake-inline-error">{runtime.error}</p>}
               </div>
@@ -824,9 +952,14 @@ function App() {
         <div className="composer-wrap" ref={onboardingTargets.chat as React.RefObject<HTMLDivElement>}><MediaJobNotice jobs={experience.snapshot.jobs.filter(job => job.purpose === 'chat')} bridge={scopedBridge} healthy={healthy} refresh={experience.refresh} diagnose={setMessageDiagnostic} />{mediaDrawer && <MediaComposer onVoiceMode={() => setVoiceBar(true)} onVisual={() => { setMediaDrawer(false); openSpace('visual') }} key={selected} bridge={scopedBridge} healthy={healthy} snapshot={experience.snapshot} refresh={experience.refresh} onPick={source => void pickImage(undefined, source)} close={() => setMediaDrawer(false)} onTranscript={(text, audio) => { const current = getDraft(selected); updateDraft({ content: [current.content, text].filter(Boolean).join("\n"), audio }); composer.current?.focus() }} />}{draftAudio && <div className="draft-audio"><VoiceBubble bridge={bridge} audio={draftAudio} content={draft} /><div className="draft-audio-actions"><button type="button" className="primary-pill" disabled={!native || runtime?.state !== 'healthy' || sending || busy} onClick={() => void send()}>发送语音</button><button type="button" onClick={() => updateDraft({ audio: undefined })}>移除语音</button></div></div>}{stickerDrawer && stickerEntryVisible(stickers) && <StickerDrawer library={stickers} disabled={sending || busy || !healthy} close={() => setStickerDrawer(false)} send={(packId, asset) => void send(undefined, { packId, asset })} />}{attachments.length > 0 && <div className="attachment-tray">{attachments.map(image => <div key={image.id}><img src={image.dataUri} alt="待发送图片" /><button aria-label="移除图片" disabled={sending || busy} onClick={() => setAttachments(current => current.filter(item => item.id !== image.id))}>×</button></div>)}</div>}<form className={`composer${voiceBar ? ' voice-mode' : ''}`} onSubmit={event => { event.preventDefault(); if (!composing.current) void send() }}>{voiceBar ? <><button type="button" className="voice-mode-button" aria-label="切换到键盘输入" disabled={busy || sending || voiceRecording} onClick={() => { setVoiceBar(false); setTimeout(() => composer.current?.focus(), 20) }}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="3" /><path d="M7 9h.01M10 9h.01M14 9h.01M17 9h.01M7 12h.01M10 12h.01M14 12h.01M17 12h.01M8 15h8" strokeLinecap="round" /></svg></button><button type="button" className={`composer-hold-to-talk${voiceRecording ? ' recording' : ''}${voiceCancel ? ' cancelling' : ''}`} disabled={!healthy || busy || sending} onContextMenu={e => e.preventDefault()} onPointerDown={e => { if (busy || sending || !healthy) return; e.currentTarget.setPointerCapture(e.pointerId); void startInlineVoice(e.clientY) }} onPointerMove={e => { if (!voiceHold.current.active) return; const cancel = voiceHold.current.startY - e.clientY > 48; voiceHold.current.cancel = cancel; setVoiceCancel(cancel) }} onPointerUp={() => { if (!voiceHold.current.active) return; if (voiceHold.current.cancel || Date.now() - voiceHold.current.startedAt >= 180) void stopInlineVoice(voiceHold.current.cancel) }} onPointerCancel={() => { if (voiceHold.current.active) void stopInlineVoice(true) }}>{voiceRecording ? (voiceCancel ? '松开手指，取消发送' : '松开 结束 · 上滑取消') : '按住 说话'}</button><button type="button" className="sticker-entry" aria-label="打开表情包" aria-expanded={stickerDrawer} disabled={busy || sending || voiceRecording} onClick={() => { if (stickerEntryVisible(stickers)) setStickerDrawer(value => !value); else setStickerManager(true) }}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M8.5 14.5q3.5 3.5 7 0M9 9.5v1.5M15 9.5v1.5" strokeLinecap="round" /></svg></button><button type="button" className="attach-button" aria-label="添加图片或语音" aria-expanded={mediaDrawer} disabled={busy || sending || voiceRecording} onClick={() => { setStickerDrawer(false); setMediaDrawer(value => !value) }}>＋</button></> : <><button type="button" className="attach-button" aria-label="添加图片或语音" aria-expanded={mediaDrawer} disabled={busy || sending} onClick={() => { composer.current?.blur(); setStickerDrawer(false); setMediaDrawer(value => !value) }}>＋</button>{stickerEntryVisible(stickers) && <button type="button" className="sticker-entry" aria-label="打开表情包" aria-expanded={stickerDrawer} disabled={busy || sending} onClick={() => { composer.current?.blur(); setStickerDrawer(value => !value) }}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M8.5 14.5q3.5 3.5 7 0M9 9.5v1.5M15 9.5v1.5" strokeLinecap="round" /></svg></button>}<textarea ref={composer} disabled={sending} rows={1} value={draft} onCompositionStart={() => { composing.current = true }} onCompositionEnd={() => { composing.current = false }} onKeyDown={event => { const action = composerEnter({ key: event.key, shiftKey: event.shiftKey, ctrlKey: event.ctrlKey, isComposing: event.nativeEvent.isComposing, keyCode: event.keyCode }, composing.current, experience.settings.enterBehavior); if (action === 'send') { event.preventDefault(); void send() } }} onPaste={event => { const images = [...event.clipboardData.items].filter(item => item.type.startsWith('image/')).map(item => item.getAsFile()).filter((file): file is File => file !== null); if (images.length) { event.preventDefault(); void pickImage(images) } }} onChange={event => setDraft(event.target.value)} placeholder={runtime?.state === 'healthy' ? '发消息…' : '唤醒后发送…'} maxLength={12000} aria-label="消息内容" /><button className="send" disabled={!native || runtime?.state !== 'healthy' || sending || busy || (!draft.trim() && !attachments.length && !draftAudio)} aria-label="发送消息"><Icon name="arrow" /></button></>}</form>{attachmentReason && <p id="image-entry-hint" className="composer-hint">{attachmentReason}</p>}</div>
       </>}
       {page === 'cards' && <>
-        <div className="page-heading"><div><h1>角色库<span className="sr-only">。</span></h1></div><button className="text-button" onClick={() => setPage('chat')}>返回故事</button></div>
-        <div className="actions" ref={onboardingTargets.library as React.RefObject<HTMLDivElement>}><button className="primary" disabled={!native || busy} onClick={importCard}><Icon name="plus" />导入角色卡</button><button className="secondary" disabled={!native || busy} onClick={() => setCreateOpen(true)}>手动创建</button><button className="secondary" disabled={!native || busy} onClick={() => { setImportCodeOpen(true) }}>用导入码导入</button><button className="secondary" disabled={!native || busy || !selected} onClick={() => openCardExport(selected)}>导出</button></div>
-        <p className="caption">JSON / PNG / YAML · 酒馆 V1–V3 · typ0 / HDS koishi.yml<br />CHARX、压缩 PNG 元数据和第三方扩展暂不支持执行。</p>
+        <SettingsSubpageHeader
+          title="人格与角色库"
+          backLabel="返回故事"
+          onBack={() => setPage('chat')}
+        />
+        <section className="settings-group cards-import-panel" ref={onboardingTargets.library as React.RefObject<HTMLElement>}>
+          <div className="actions"><button className="primary" disabled={!native || busy} onClick={importCard}><Icon name="plus" />导入角色卡</button><button className="secondary" disabled={!native || busy} onClick={() => setCreateOpen(true)}>手动创建</button><button className="secondary" disabled={!native || busy} onClick={() => { setImportCodeOpen(true) }}>用导入码导入</button><button className="secondary" disabled={!native || busy || !selected} onClick={() => openCardExport(selected)}>导出</button></div>
+        </section>
         <div className="card-list">{cards.map((saved, index) => <article className={`character ${saved.id === selected ? 'chosen' : ''}`} key={saved.id}><div className="character-number">{String(index + 1).padStart(2, '0')}</div><div className="character-body"><div className="character-title"><h2>{saved.card.name}</h2>{saved.id === selected && <span className="tag">当前角色</span>}</div><p>{saved.card.description || saved.card.personality || '尚未填写角色描述'}</p><span className="caption">{saved.card.format.toUpperCase()} · {saved.card.lorebook ? '含世界书' : '独立人设'} · {new Date(saved.importedAt).toLocaleDateString('zh-CN')}</span><div className="card-actions"><button disabled={busy || sending || transitioning || saved.id === selected} onClick={() => switchCard(saved.id)}>{saved.id === selected ? '正在使用' : '使用这个角色'}</button><button onClick={() => setPreview({ card: saved.card, base64: '' })}>查看人设</button><button disabled={busy} onClick={() => setEditingCard(saved)}>编辑</button><button disabled={busy} onClick={() => openCardExport(saved.id)}>导出角色卡</button><button disabled={busy} className="danger" onClick={() => setDeleteTarget(saved)}>删除</button></div></div></article>)}</div>
         {!cards.length && <div className="quiet-empty">角色库还很安静。<br />为第一段故事选一个主角吧。</div>}
       </>}
@@ -850,6 +983,7 @@ function App() {
         {!spacePage ? <div key="space-home" className={`space-home${spaceMotion === 'back' ? ' space-enter-back' : ''}`}>
           <section className="space-wake"><div className="section-title"><h2>故事的节奏</h2><span className="tag">{runtimeLabel}</span></div>{healthy ? <button className="secondary" disabled={busy || sending} onClick={() => act(async () => { await bridge.stop(); setRuntime(await bridge.status()) }, '故事暂时歇息，经历都已留存。')}>让故事休息一下</button> : wakePanel}</section>
           <div className="settings-directory">{spaceEntries.filter(item => !['advanced', 'system'].includes(item.key)).map(item => <button ref={item.key === 'models' ? onboardingTargets.models as React.RefObject<HTMLButtonElement> : undefined} className="settings-entry" key={item.key} onClick={() => openSpace(item.key, 1)}><span>{item.label}<small>{item.caption}</small></span></button>)}</div>
+          <button className="settings-entry" onClick={() => setPage('cards')}><span>人格导入与修改<small>导入角色卡、导入码创建、查看与编辑人设 · {cards.length} 位角色</small></span></button>
           <button ref={onboardingTargets.inbox as React.RefObject<HTMLButtonElement>} className="settings-entry" onClick={() => openInbox('space', 1)}><span>信箱与外部连接<small>来信、QQ 接入与会话管理{inboxUnread > 0 ? ` · ${inboxUnread} 条未读` : ''}</small></span></button>
           <button className="settings-entry" onClick={() => setStickerManager(true)}><span>表情包<small>我的表情与角色表情 · 独立素材池</small></span></button>
           <button ref={onboardingTargets.help as React.RefObject<HTMLButtonElement>} className="settings-entry" onClick={() => setMessageDiagnostic('')}><span>消息诊断<small>聊天、生图、发图与检索的排查建议</small></span></button>
@@ -895,7 +1029,6 @@ function App() {
     {messageDiagnostic !== null && <MessageDiagnostics jobs={experience.snapshot.jobs} refreshJobs={experience.refresh} configureImages={() => { setMessageDiagnostic(null); openSpace('media') }} key={selected} bridge={scopedBridge} healthy={healthy} messageId={messageDiagnostic} messages={messages} close={() => setMessageDiagnostic(null)} />}
     {settingEditor && <StorySettingEditor key={selected} bridge={bridge} close={() => setSettingEditor(false)} saved={async () => { await refreshStory(); setNotice('故事设定已更新。') }} />}
     {stickerManager && <StickerManager back={stickerManagerBack} library={stickers} bridge={bridge} native={native} change={value => { saveStickers(value); if (runtimeRef.current?.state === 'healthy') setRestartNeeded(true) }} close={() => setStickerManager(false)} notify={setNotice} importReason={!settingsReady ? '正在读取模型设置，请稍候…' : stickerImportReason(settings)} beforeImport={async () => { const reason = stickerImportReason(settingsRef.current); if (reason) throw new Error(reason); await persistSettings() }} configureVision={() => { setStickerManager(false); openSpace('tasks') }} />}
-    {switcher && <div className="modal-backdrop"><section className="modal" role="dialog" aria-modal="true" aria-label="选择角色或故事"><div className="section-title"><h2>下一页，和谁一起？</h2><button autoFocus aria-label="关闭角色选择" onClick={() => setSwitcher(false)}>×</button></div><p className="caption">每个人的经历独立留存，切换后可以继续上次的故事。</p>{cards.map(saved => <button className="story-choice" disabled={busy || sending || transitioning} key={saved.id} onClick={() => switchCard(saved.id)}><span>{saved.card.name}</span><small>{saved.id === selected ? '当前故事' : '继续故事 →'}</small></button>)}<button className="secondary wide" disabled={!native || !healthy || busy} onClick={() => { setSwitcher(false); openSpace('world'); setSettingEditor(true) }}>修改故事设定</button><button className="secondary wide" onClick={() => { setSwitcher(false); setPage('cards') }}>导入、创建与管理角色</button></section></div>}
     {editingCard && <CardEditor key={editingCard.id} saved={editingCard} busy={busy} close={() => setEditingCard(null)} save={async card => { setBusy(true); try { await bridge.updateCard({ id: editingCard.id, card }); setEditingCard(null); await refreshCards(); setNotice('人设已修改，剧情与记忆保留。重新启动 HDS 后生效。') } finally { setBusy(false) } }} />}
     {deleteTarget && <div className="modal-backdrop"><section className="modal" role="dialog" aria-modal="true" aria-label="删除角色确认"><h2>删除「{deleteTarget.card.name}」？</h2><p>将从角色库移除。已有剧情、记忆与原文件仍保留在本机，重新导入原文件可恢复。当前角色运行时会先停止 HDS。</p><div className="actions"><button className="secondary" disabled={busy} onClick={() => setDeleteTarget(null)}>取消</button><button className="primary" disabled={busy} onClick={() => void act(async () => { const id = deleteTarget.id; await bridge.deleteCard({ id }); setDeleteTarget(null); if (selected === id) { setMessages([]); setStory(null) } await refreshCards() }, '角色已从库中移除，历史保留。')}>确认删除</button></div></section></div>}
     {importChoices.length > 0 && <div className="modal-backdrop"><section className="modal" role="dialog" aria-modal="true" aria-label="选择 HDS 人设"><div className="section-title"><h2>文件包含多个人设</h2><button aria-label="取消导入" onClick={() => setImportChoices([])}>×</button></div><p className="caption">选择要导入的 HDS 实例。</p>{importChoices.map((choice, index) => <button key={index} className="secondary wide" onClick={() => { setPreview(choice); setImportChoices([]) }}>{index + 1}. {choice.card.name}</button>)}</section></div>}
