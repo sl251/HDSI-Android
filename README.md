@@ -56,12 +56,12 @@ https://github.com/user-attachments/assets/809470b8-84a5-4e32-ac78-d59d217fac7b
 
 ## 📥 下载安装
 
-当前发布版本为 **[Preview 9.7.2](https://github.com/sl251/HDSI-Android/releases/tag/v0.1.0-preview.9.7.2)**，Android `versionCode` 为 `38`。
+当前发布版本为 **[Preview 9.7.3](https://github.com/sl251/HDSI-Android/releases/tag/v0.1.0-preview.9.7.3)**，Android `versionCode` 为 `39`。
 
 **[前往 Releases 下载签名 APK](https://github.com/sl251/HDSI-Android/releases/latest)**
 
 - **系统要求：** Android 8.0 及以上，ARM64（arm64-v8a）。
-- **9.7.2 安装包：** [HDS-Android-0.1.0-preview.9.7.2-arm64.apk](https://github.com/sl251/HDSI-Android/releases/download/v0.1.0-preview.9.7.2/HDS-Android-0.1.0-preview.9.7.2-arm64.apk)。
+- **9.7.3 安装包：** [HDS-Android-0.1.0-preview.9.7.3-arm64.apk](https://github.com/sl251/HDSI-Android/releases/download/v0.1.0-preview.9.7.3/HDS-Android-0.1.0-preview.9.7.3-arm64.apk)。
 - **文件校验：** 使用 Release 附件中的 `SHA256SUMS.txt`。
 - **存储空间：** 建议预留至少 1.5 GB；开启实验性本地 QQ 接入还需额外约 1.6 GB。
 
@@ -80,6 +80,8 @@ https://github.com/user-attachments/assets/809470b8-84a5-4e32-ac78-d59d217fac7b
 需要给不同任务分配模型，可以到「空间 → 任务分工」调整。
 
 ## 🗞️ 最近更新
+
+**Preview 9.7.3** 把故事页的睡眠态收成一个明确的主操作，聊天输入栏改为稳定停靠在底部导航上方，并修复了角色表情包相对文字气泡的偏移。顶栏可以直接下拉切换角色或故事，也能从同一菜单进入「人格与角色库」；空间子页与通知设置一并换上统一的液态玻璃样式。详见 [9.7.3 更新说明](docs/PREVIEW9.7.3.md)。
 
 **Preview 9.7.2** 更新了 Material 3 风格的界面和动效，简化了页面标题与布局，并修复了开关圆点和胶囊按钮的对齐。在故事页点「＋ → 语音」，即可在聊天栏按住说话、上滑取消，录完后可发送或移除录音。详见 [9.7.2 更新说明](docs/PREVIEW9.7.2.md)。
 
