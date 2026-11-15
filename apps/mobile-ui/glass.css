@@ -44,6 +44,13 @@
   --danger: #d93848;
   --ease: cubic-bezier(0.22, 1, 0.36, 1);
   --ease-spring: cubic-bezier(0.34, 1.38, 0.64, 1);
+  /* 统一轻触按压反馈变量 */
+  --press-scale: 0.965;
+  --press-scale-sm: 0.935;
+  --press-scale-card: 0.985;
+  --press-ease: cubic-bezier(0.32, 0.72, 0, 1);
+  --press-bg: color-mix(in srgb, var(--ink) 8%, rgba(var(--surface-rgb), 0.78));
+  --press-primary-filter: brightness(0.91);
   --fast: 120ms;
   --base: 190ms;
   --slow: 280ms;
@@ -210,7 +217,8 @@ header:has(.character-dropdown) {
 }
 
 .character-dropdown-library:active:not(:disabled) {
-  transform: scale(0.98);
+  transform: scale(var(--press-scale-card));
+  background: var(--press-bg);
 }
 
 .character-dropdown-library-icon {
@@ -298,9 +306,9 @@ header:has(.character-dropdown) {
   color: var(--muted);
 }
 
-.header-chat-settings:active {
-  transform: scale(0.95);
-  background: var(--surface-alt);
+.header-chat-settings:active:not(:disabled) {
+  transform: scale(var(--press-scale-sm));
+  background: var(--press-bg);
 }
 
 /* FlClash Core Status Pill */
@@ -317,7 +325,12 @@ header:has(.character-dropdown) {
   flex-wrap: nowrap;
   white-space: nowrap;
   box-shadow: var(--glint), 0 2px 10px rgba(0, 0, 0, 0.04);
-  transition: transform var(--fast) var(--ease-spring), background-color var(--base) var(--ease), border-color var(--base) var(--ease), box-shadow var(--base) var(--ease);
+  transition: transform var(--fast) var(--press-ease), background-color var(--base) var(--ease), border-color var(--base) var(--ease), box-shadow var(--base) var(--ease);
+}
+
+.status:active:not(:disabled) {
+  transform: scale(var(--press-scale));
+  background: var(--press-bg);
 }
 
 .status i {
@@ -399,9 +412,9 @@ h2 {
   transition: transform var(--fast) var(--ease-spring), background-color var(--fast) var(--ease), border-color var(--fast) var(--ease);
 }
 
-.character-switch:active {
-  transform: scale(0.96);
-  background: var(--surface-alt);
+.character-switch:active:not(:disabled) {
+  transform: scale(var(--press-scale));
+  background: var(--press-bg);
 }
 
 .character-switch .header-char-avatar {
@@ -533,11 +546,17 @@ button:disabled {
   color: #fff;
   font-weight: 600;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.28), 0 4px 14px color-mix(in srgb, var(--accent) 32%, transparent);
+  transition: transform var(--fast) var(--press-ease), filter var(--fast) var(--ease), box-shadow var(--fast) var(--ease);
 }
 
 .primary:hover:not(:disabled), .send:hover:not(:disabled) {
   filter: brightness(1.05);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35), 0 6px 18px color-mix(in srgb, var(--accent) 42%, transparent);
+}
+
+.primary:active:not(:disabled), .send:active:not(:disabled) {
+  transform: scale(var(--press-scale));
+  filter: var(--press-primary-filter);
 }
 
 .secondary {
@@ -546,12 +565,18 @@ button:disabled {
   background: rgba(var(--surface-high-rgb), 0.72);
   color: var(--ink);
   font-weight: 500;
+  transition: transform var(--fast) var(--press-ease), background-color var(--fast) var(--ease), border-color var(--fast) var(--ease), color var(--fast) var(--ease);
 }
 
 .secondary:hover:not(:disabled) {
   background: var(--accent-soft);
   border-color: color-mix(in srgb, var(--accent) 28%, transparent);
   color: var(--accent);
+}
+
+.secondary:active:not(:disabled) {
+  transform: scale(var(--press-scale));
+  background: var(--press-bg);
 }
 
 .text-button {
@@ -570,10 +595,16 @@ button:disabled {
   background: color-mix(in srgb, var(--accent-soft) 55%, transparent);
   white-space: nowrap;
   flex-shrink: 0;
+  transition: transform var(--fast) var(--press-ease), background-color var(--fast) var(--ease);
 }
 
 .text-button:hover:not(:disabled) {
   background: var(--accent-soft);
+}
+
+.text-button:active:not(:disabled) {
+  transform: scale(var(--press-scale));
+  background: var(--press-bg);
 }
 
 .danger {
@@ -676,6 +707,12 @@ button:disabled {
   background: rgba(var(--surface-high-rgb), 0.8);
   color: var(--ink);
   font-weight: 500;
+  transition: transform var(--fast) var(--press-ease), background-color var(--fast) var(--ease);
+}
+
+.card-actions button:active:not(:disabled) {
+  transform: scale(var(--press-scale-sm));
+  background: var(--press-bg);
 }
 
 .card-actions button:first-child {
@@ -948,7 +985,12 @@ input[type="checkbox"] {
   border-radius: 999px;
   font-weight: 600;
   font-size: 13px;
-  transition: background-color var(--base) var(--ease), color var(--base) var(--ease), box-shadow var(--base) var(--ease);
+  transition: transform var(--fast) var(--press-ease), background-color var(--base) var(--ease), color var(--base) var(--ease), box-shadow var(--base) var(--ease);
+}
+
+.tabs button:active:not(:disabled) {
+  transform: scale(var(--press-scale-sm));
+  background: var(--press-bg);
 }
 
 .tabs button.active {
@@ -978,6 +1020,12 @@ input[type="checkbox"] {
   border: 1px solid var(--outline-subtle);
   font-weight: 500;
   color: var(--accent);
+  transition: transform var(--fast) var(--press-ease), background-color var(--fast) var(--ease);
+}
+
+.inline-actions button:active:not(:disabled) {
+  transform: scale(var(--press-scale-sm));
+  background: var(--press-bg);
 }
 
 .timeline > article {
@@ -1197,7 +1245,13 @@ nav button {
   opacity: 0.72;
   min-height: 54px;
   letter-spacing: 0;
-  transition: transform var(--fast) var(--ease-spring), background-color var(--base) var(--ease), color var(--base) var(--ease), opacity var(--fast) var(--ease), box-shadow var(--fast) var(--ease);
+  transition: transform var(--fast) var(--press-ease), background-color var(--base) var(--ease), color var(--base) var(--ease), opacity var(--fast) var(--ease), box-shadow var(--fast) var(--ease);
+}
+
+nav button:active:not(:disabled) {
+  transform: scale(var(--press-scale-sm));
+  background: var(--press-bg);
+  opacity: 1;
 }
 
 nav button svg {
@@ -1242,6 +1296,16 @@ nav button.active::after {
   overscroll-behavior: contain;
   border: 1px solid var(--outline-subtle);
   animation: sheet-spring var(--base) var(--ease);
+}
+
+/* 弹窗通用轻触反馈（避免覆盖主操作按钮样式） */
+.modal button:not(.primary):not(.danger-solid) {
+  transition: transform var(--fast) var(--press-ease), background-color var(--fast) var(--ease), border-color var(--fast) var(--ease);
+}
+
+.modal button:not(.primary):not(.danger-solid):active:not(:disabled) {
+  transform: scale(var(--press-scale));
+  background: var(--press-bg);
 }
 
 @keyframes backdrop-fade {
@@ -1327,14 +1391,14 @@ pre {
     backdrop-filter: var(--glass-blur);
     -webkit-backdrop-filter: var(--glass-blur);
   }
-  nav, .character-dropdown {
+  nav, .character-dropdown, .wake-glass-card, .space-wake, .space-subtabs, .onboarding-card, .wake-prompt-modal, .modal.message-diagnostics {
     backdrop-filter: var(--liquid-glass-filter);
     -webkit-backdrop-filter: var(--liquid-glass-filter);
   }
 }
 
 @supports not (backdrop-filter: blur(12px)) {
-  nav, .composer, .status, header, .sticker-drawer, .media-composer, .select-popover, .wake-inline-bar {
+  nav, .composer, .status, header, .sticker-drawer, .media-composer, .select-popover, .wake-inline-bar, .wake-glass-card, .space-wake, .space-subtabs, .onboarding-card, .wake-prompt-modal, .modal.message-diagnostics {
     background: var(--glass-bg-strong);
   }
 }
@@ -1371,6 +1435,8 @@ pre {
   --liquid-item-border: rgba(255, 255, 255, 0.16);
   --liquid-nav-active-bg: color-mix(in srgb, var(--accent-soft) 56%, rgba(255, 255, 255, 0.1));
   --liquid-nav-active-border: color-mix(in srgb, var(--accent) 34%, rgba(255, 255, 255, 0.24));
+  --press-bg: color-mix(in srgb, var(--ink) 14%, rgba(var(--surface-high-rgb), 0.78));
+  --press-primary-filter: brightness(0.9);
   --shadow: 0 6px 24px rgba(0, 0, 0, 0.28);
   --shadow-elevated: 0 14px 40px rgba(0, 0, 0, 0.45);
   --danger: #ff8b94;
@@ -1409,6 +1475,8 @@ pre {
     --liquid-item-border: rgba(255, 255, 255, 0.16);
     --liquid-nav-active-bg: color-mix(in srgb, var(--accent-soft) 56%, rgba(255, 255, 255, 0.1));
     --liquid-nav-active-border: color-mix(in srgb, var(--accent) 34%, rgba(255, 255, 255, 0.24));
+    --press-bg: color-mix(in srgb, var(--ink) 14%, rgba(var(--surface-high-rgb), 0.78));
+    --press-primary-filter: brightness(0.9);
     --shadow: 0 6px 24px rgba(0, 0, 0, 0.28);
     --shadow-elevated: 0 14px 40px rgba(0, 0, 0, 0.45);
     --danger: #ff8b94;
@@ -1508,7 +1576,7 @@ pre {
 }
 
 @media (prefers-reduced-transparency: reduce) {
-  nav, .composer, .status, .bubble, .settings-group, .wake-panel, .sticker-drawer, .media-composer, .select-popover, .wake-inline-bar, header::before, .character-dropdown {
+  nav, .composer, .status, .bubble, .settings-group, .wake-panel, .sticker-drawer, .media-composer, .select-popover, .wake-inline-bar, header::before, .character-dropdown, .wake-glass-card, .space-wake, .space-subtabs, .onboarding-card, .wake-prompt-modal, .modal.message-diagnostics {
     background: var(--glass-bg-strong);
     backdrop-filter: none;
     -webkit-backdrop-filter: none;
@@ -1545,9 +1613,12 @@ nav .nav-indicator {
 
 .onboarding-highlight {
   position: fixed;
-  border: 2px solid var(--accent);
-  border-radius: 20px;
-  box-shadow: 0 0 0 100vmax rgba(14, 22, 38, 0.62), 0 0 0 6px color-mix(in srgb, var(--accent) 24%, transparent);
+  border: 2px solid color-mix(in srgb, var(--accent) 82%, white);
+  border-radius: 22px;
+  box-shadow:
+    0 0 0 100vmax rgba(10, 16, 30, 0.56),
+    inset 0 1px 0 rgba(255, 255, 255, 0.48),
+    0 0 0 6px color-mix(in srgb, var(--accent) 26%, transparent);
   pointer-events: none;
   transition: all var(--base) var(--ease);
 }
@@ -1561,13 +1632,15 @@ nav .nav-indicator {
   overflow: auto;
   overscroll-behavior: contain;
   padding: 24px;
-  border: 1px solid var(--outline-subtle);
-  border-radius: 26px;
-  background: rgb(var(--surface-rgb));
+  border: var(--liquid-glass-border);
+  border-radius: 28px;
+  background: var(--liquid-glass-bg);
   color: var(--ink);
-  box-shadow: var(--shadow-elevated);
+  backdrop-filter: var(--liquid-glass-filter);
+  -webkit-backdrop-filter: var(--liquid-glass-filter);
+  box-shadow: var(--liquid-glass-shadow);
   opacity: 0;
-  transition: opacity 120ms var(--ease);
+  transition: opacity 150ms var(--ease);
 }
 
 .onboarding-overlay.is-visible .onboarding-card {
@@ -1607,6 +1680,12 @@ nav .nav-indicator {
   flex: 1;
   white-space: nowrap;
   font-size: 12px;
+  transition: transform var(--fast) var(--press-ease), background-color var(--fast) var(--ease), filter var(--fast) var(--ease);
+}
+
+.onboarding-actions button:not(.primary):not(.text-button):active:not(:disabled) {
+  transform: scale(var(--press-scale));
+  background: var(--press-bg);
 }
 
 .onboarding-actions .text-button {

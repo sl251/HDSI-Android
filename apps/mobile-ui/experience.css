@@ -52,6 +52,7 @@
   justify-content: center;
   flex-shrink: 0;
   line-height: 1;
+  transition: transform var(--fast) var(--press-ease), background-color var(--fast) var(--ease), color var(--fast) var(--ease), box-shadow var(--fast) var(--ease), filter var(--fast) var(--ease);
 }
 
 .composer-wrap .composer .attach-button {
@@ -61,10 +62,92 @@
   font-weight: 500;
 }
 
+.composer-wrap .composer .attach-button:active:not(:disabled),
+.composer-wrap .composer .voice-mode-button:active:not(:disabled),
+.composer-wrap .composer .sticker-entry:active:not(:disabled) {
+  transform: scale(var(--press-scale-sm));
+  background: var(--press-bg);
+}
+
 .composer-wrap .composer .sticker-entry,
 .composer-wrap .composer .voice-mode-button {
   color: var(--accent);
   background: var(--accent-soft);
+}
+
+/* 打开表情包抽屉时底部表情按钮明显变暗加深 */
+.composer-wrap .composer .sticker-entry[aria-expanded="true"] {
+  background: color-mix(in srgb, var(--ink) 20%, var(--accent-soft));
+  color: color-mix(in srgb, var(--ink) 78%, var(--accent));
+  box-shadow: inset 0 2px 6px rgba(15, 23, 42, 0.24), 0 0 0 1px color-mix(in srgb, var(--accent) 34%, transparent);
+  transform: scale(0.92);
+}
+
+:root[data-theme="dark"] .composer-wrap .composer .sticker-entry[aria-expanded="true"] {
+  background: color-mix(in srgb, #000 44%, var(--accent-soft));
+  color: color-mix(in srgb, var(--accent) 84%, #fff);
+  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.45), 0 0 0 1px color-mix(in srgb, var(--accent) 44%, transparent);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .composer-wrap .composer .sticker-entry[aria-expanded="true"] {
+    background: color-mix(in srgb, #000 44%, var(--accent-soft));
+    color: color-mix(in srgb, var(--accent) 84%, #fff);
+    box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.45), 0 0 0 1px color-mix(in srgb, var(--accent) 44%, transparent);
+  }
+}
+
+/* 底部表情包抽屉 · 半透明液态玻璃 + Q 弹弹出动画 */
+.composer-wrap .sticker-drawer {
+  border: var(--liquid-glass-border);
+  border-radius: 26px;
+  padding: 12px 14px 14px;
+  margin-bottom: 10px;
+  background: var(--liquid-glass-bg);
+  backdrop-filter: var(--liquid-glass-filter);
+  -webkit-backdrop-filter: var(--liquid-glass-filter);
+  box-shadow: var(--liquid-glass-shadow);
+  transform-origin: 76px calc(100% + 14px);
+  animation: sticker-drawer-pop 240ms var(--ease-spring) both;
+}
+
+.composer-wrap .sticker-drawer .sticker-group {
+  border-top-color: var(--liquid-item-border);
+}
+
+.composer-wrap .sticker-drawer .sticker-group:first-child {
+  border-top: 0;
+  margin-top: 0;
+  padding-top: 2px;
+}
+
+.composer-wrap .sticker-drawer .sticker-grid > button {
+  border-radius: 16px;
+  padding: 6px;
+  background: var(--liquid-item-bg);
+  border: 1px solid transparent;
+  transition: transform var(--fast) var(--press-ease), background-color var(--fast) var(--ease), border-color var(--fast) var(--ease);
+}
+
+.composer-wrap .sticker-drawer .sticker-grid > button:active:not(:disabled) {
+  transform: scale(0.9);
+  background: var(--press-bg);
+  border-color: var(--liquid-item-border);
+}
+
+@keyframes sticker-drawer-pop {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, 12px, 0) scale(0.84);
+  }
+  70% {
+    opacity: 1;
+    transform: translate3d(0, -2px, 0) scale(1.015);
+  }
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
 }
 
 .composer-wrap .composer .sticker-entry svg,
@@ -206,10 +289,16 @@
   font-size: 12px;
 }
 
+/* 见闻页顶部 Tabs 留出自然呼吸间距 */
+.accordion[data-page="story"] > .tabs {
+  margin-top: 10px;
+}
+
 /* Feed / Moments Modern Cards */
 .feed-page {
   max-width: 760px;
   margin: auto;
+  padding-top: 12px;
   padding-bottom: 24px;
 }
 
@@ -235,10 +324,13 @@
 
 .feed-compose {
   padding: 14px 18px;
-  border-radius: 22px;
-  border: 1px solid var(--outline-subtle);
-  background: rgba(var(--surface-rgb), var(--panel-alpha));
-  box-shadow: var(--glint), var(--shadow);
+  border-radius: 24px;
+  border: var(--liquid-glass-border);
+  background: var(--liquid-glass-bg);
+  backdrop-filter: var(--liquid-glass-filter);
+  -webkit-backdrop-filter: var(--liquid-glass-filter);
+  box-shadow: var(--liquid-glass-shadow);
+  margin-top: 4px;
   margin-bottom: 16px;
 }
 
@@ -272,6 +364,56 @@
   color: var(--ink);
   font-size: 12px;
   font-weight: 600;
+  transition: transform var(--fast) var(--press-ease), background-color var(--fast) var(--ease);
+}
+
+.feed-tools button:not(.primary):not(.text-button):active:not(:disabled) {
+  transform: scale(var(--press-scale-sm));
+  background: var(--press-bg);
+}
+
+/* 动态未唤醒提示 · 半透明液态玻璃居中弹窗 */
+.modal-backdrop:has(> .wake-prompt-modal) {
+  align-items: center;
+}
+
+.modal.wake-prompt-modal {
+  width: min(360px, 100%);
+  margin: auto;
+  border-radius: 28px;
+  border: var(--liquid-glass-border);
+  background: var(--liquid-glass-bg);
+  backdrop-filter: var(--liquid-glass-filter);
+  -webkit-backdrop-filter: var(--liquid-glass-filter);
+  box-shadow: var(--liquid-glass-shadow);
+}
+
+.wake-prompt-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 11px;
+  border-radius: 999px;
+  background: var(--liquid-item-bg);
+  border: 1px solid var(--liquid-item-border);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+  margin-bottom: 10px;
+}
+
+.wake-core-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 22%, transparent);
+}
+
+.modal.wake-prompt-modal h2 {
+  margin: 2px 0 8px;
+  font-size: 18px;
+  line-height: 1.4;
 }
 
 .feed-tools button[aria-pressed="true"] {
@@ -570,21 +712,139 @@
 }
 
 /* FlClash Bento Dashboard & Space Settings Layout */
+.space-home {
+  padding-top: 8px;
+}
+
+/* 单层纯净液态玻璃状态卡片（彻底消除嵌套二次模糊变色） */
 .space-home section.space-wake {
   padding: 18px 20px;
   margin: 0 0 16px;
-  border: 1px solid var(--outline-subtle);
-  border-radius: 22px;
-  background: rgba(var(--surface-rgb), var(--panel-alpha));
-  box-shadow: var(--glint), var(--shadow);
+  border: var(--liquid-glass-border);
+  border-radius: 26px;
+  background: var(--liquid-glass-bg);
+  backdrop-filter: var(--liquid-glass-filter);
+  -webkit-backdrop-filter: var(--liquid-glass-filter);
+  box-shadow: var(--liquid-glass-shadow);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
 }
 
-.space-home .wake-panel {
-  margin: 0;
-  border: 0;
-  padding: 4px 0 0;
-  background: transparent;
-  box-shadow: none;
+.space-wake-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.space-wake-identity {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.space-wake-identity > div {
+  min-width: 0;
+}
+
+.space-wake-identity b {
+  display: block;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--ink);
+  line-height: 1.3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.space-wake-identity small {
+  display: block;
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 2px;
+  line-height: 1.4;
+}
+
+.space-wake-avatar {
+  width: 44px;
+  height: 44px;
+  flex: none;
+  border-radius: 16px;
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--liquid-item-border);
+  background: linear-gradient(135deg, color-mix(in srgb, var(--accent-soft) 72%, rgba(255, 255, 255, 0.35)), var(--liquid-item-bg));
+  color: var(--accent);
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.space-wake-avatar[data-initial]::before {
+  content: attr(data-initial);
+}
+
+.space-wake-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.space-wake-head .tag {
+  flex: none;
+}
+
+.space-wake-head .tag.is-online {
+  color: var(--accent);
+  background: var(--liquid-nav-active-bg);
+  border-color: var(--liquid-nav-active-border);
+}
+
+.space-wake-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: center;
+}
+
+.space-wake-progress progress {
+  width: 100%;
+  height: 6px;
+  accent-color: var(--accent);
+}
+
+.space-wake-action {
+  width: 100%;
+}
+
+/* 方案 A：4 组清爽 Bento 分区 */
+.space-group {
+  margin-top: 14px;
+}
+
+.space-section-label {
+  display: block;
+  padding: 0 4px 8px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  color: var(--muted);
+}
+
+.space-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+@media (max-width: 340px) {
+  .space-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 .settings-directory {
@@ -594,18 +854,27 @@
   margin-bottom: 12px;
 }
 
+.space-grid .settings-entry,
 .settings-directory .settings-entry {
   align-items: flex-start;
   height: 100%;
-  padding: 16px;
-  gap: 10px;
-  border: 1px solid var(--outline-subtle);
+  padding: 15px 14px;
+  gap: 8px;
+  border: 1px solid var(--liquid-item-border);
   border-radius: 20px;
-  background: rgba(var(--surface-rgb), var(--panel-alpha));
-  box-shadow: var(--glint), var(--shadow);
+  background: var(--liquid-glass-bg);
+  backdrop-filter: blur(14px) saturate(150%);
+  -webkit-backdrop-filter: blur(14px) saturate(150%);
+  box-shadow: var(--glass-highlight), var(--shadow);
   color: var(--ink);
   font-weight: 650;
   font-size: 14px;
+  transition: transform var(--fast) var(--press-ease), background-color var(--fast) var(--ease), border-color var(--fast) var(--ease);
+}
+
+.space-grid .settings-entry small {
+  margin-top: 4px;
+  line-height: 1.45;
 }
 
 .settings-directory .settings-entry svg {
@@ -623,12 +892,15 @@
 .space-detail > .settings-entry {
   padding: 14px 18px;
   margin: 8px 0;
-  border: 1px solid var(--outline-subtle);
-  border-radius: 18px;
-  background: rgba(var(--surface-rgb), var(--panel-alpha));
-  box-shadow: var(--glint), var(--shadow);
+  border: 1px solid var(--liquid-item-border);
+  border-radius: 20px;
+  background: var(--liquid-glass-bg);
+  backdrop-filter: blur(14px) saturate(150%);
+  -webkit-backdrop-filter: blur(14px) saturate(150%);
+  box-shadow: var(--glass-highlight), var(--shadow);
   color: var(--ink);
   font-weight: 600;
+  transition: transform var(--fast) var(--press-ease), background-color var(--fast) var(--ease), border-color var(--fast) var(--ease);
 }
 
 .space-home > .settings-entry svg,
@@ -645,11 +917,59 @@
 
 .settings-entry:hover:not(:disabled) {
   border-color: color-mix(in srgb, var(--accent) 35%, transparent);
-  background: color-mix(in srgb, var(--accent-soft) 28%, rgba(var(--surface-rgb), var(--panel-alpha)));
+  background: color-mix(in srgb, var(--accent-soft) 24%, var(--liquid-glass-bg));
 }
 
 .settings-entry:active:not(:disabled) {
-  transform: scale(0.99);
+  transform: scale(var(--press-scale-card));
+  background: var(--press-bg);
+}
+
+/* 空间合并子页顶部分段胶囊栏 */
+.space-subtabs {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px;
+  margin: 0 0 14px;
+  border-radius: 999px;
+  border: var(--liquid-glass-border);
+  background: var(--liquid-glass-bg);
+  backdrop-filter: var(--liquid-glass-filter);
+  -webkit-backdrop-filter: var(--liquid-glass-filter);
+  box-shadow: var(--liquid-glass-shadow);
+}
+
+.space-subtabs button {
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 38px;
+  padding: 7px 10px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: transform var(--fast) var(--press-ease), background-color var(--base) var(--ease), color var(--base) var(--ease), box-shadow var(--base) var(--ease), border-color var(--base) var(--ease);
+}
+
+.space-subtabs button:active:not(:disabled) {
+  transform: scale(var(--press-scale-sm));
+  background: var(--press-bg);
+}
+
+.space-subtabs button.is-active {
+  background: var(--liquid-nav-active-bg);
+  border-color: var(--liquid-nav-active-border);
+  color: var(--accent);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.55);
+}
+
+:root[data-theme="dark"] .space-subtabs button.is-active {
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22);
 }
 
 .space-detail > .settings-group,
@@ -768,7 +1088,8 @@
 }
 
 .story-choice:active:not(:disabled) {
-  transform: scale(0.985);
+  transform: scale(var(--press-scale-card));
+  background: var(--press-bg);
 }
 
 .story-choice.active {
@@ -937,6 +1258,13 @@
   text-align: left;
   padding: 4px 0;
   gap: 16px;
+  border-radius: 16px;
+  transition: transform var(--fast) var(--press-ease), background-color var(--fast) var(--ease);
+}
+
+.feed-compose-toggle:active:not(:disabled) {
+  transform: scale(var(--press-scale-card));
+  background: var(--press-bg);
 }
 
 .feed-compose-toggle > span:first-child {
@@ -1489,19 +1817,159 @@ body {
   text-align: center;
 }
 
+/* 液态玻璃 · 角色静候名片舱 */
+.wake-glass-card {
+  width: min(360px, 100%);
+  padding: 20px 18px 18px;
+  border-radius: 28px;
+  border: var(--liquid-glass-border);
+  background: var(--liquid-glass-bg);
+  backdrop-filter: var(--liquid-glass-filter);
+  -webkit-backdrop-filter: var(--liquid-glass-filter);
+  box-shadow: var(--liquid-glass-shadow);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  text-align: left;
+}
+
+.wake-card-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.wake-card-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--liquid-item-border);
+  background: var(--liquid-item-bg);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.wake-card-pill i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--muted);
+  opacity: 0.7;
+}
+
+.wake-card-tag {
+  font-size: 11px;
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.wake-card-identity {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+}
+
+.wake-card-avatar {
+  width: 56px;
+  height: 56px;
+  flex: none;
+  border-radius: 20px;
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--liquid-item-border);
+  background: linear-gradient(135deg, color-mix(in srgb, var(--accent-soft) 72%, rgba(255, 255, 255, 0.35)), var(--liquid-item-bg));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.52), 0 8px 20px color-mix(in srgb, var(--accent) 14%, transparent);
+  color: var(--accent);
+  font-size: 22px;
+  font-weight: 700;
+}
+
+.wake-card-avatar[data-initial]::before {
+  content: attr(data-initial);
+}
+
+.wake-card-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.wake-card-copy {
+  min-width: 0;
+  flex: 1;
+}
+
+.wake-card-copy h2 {
+  margin: 0 0 4px;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--ink);
+  line-height: 1.3;
+}
+
+.wake-card-quote {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.65;
+  color: var(--ink);
+  opacity: 0.86;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.wake-card-quote.is-placeholder {
+  color: var(--muted);
+}
+
+.wake-card-readiness {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.wake-chip {
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--liquid-item-border);
+  background: var(--liquid-item-bg);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.wake-chip.is-ready {
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent-soft) 44%, var(--liquid-item-bg));
+  border-color: color-mix(in srgb, var(--accent) 28%, var(--liquid-item-border));
+}
+
 .wake-hero {
   position: relative;
   display: grid;
   place-items: center;
-  padding: 34px 24px;
+  padding: 8px 0 2px;
+}
+
+.wake-glass-card .wake-cta {
+  width: 100%;
+  min-width: 0;
+  max-width: none;
 }
 
 .wake-aura-glow {
   position: absolute;
-  width: 280px;
-  height: 148px;
+  width: 240px;
+  height: 88px;
   border-radius: 50%;
-  background: radial-gradient(circle, color-mix(in srgb, var(--accent) 34%, transparent) 0%, color-mix(in srgb, var(--accent-soft) 42%, transparent) 48%, transparent 74%);
+  background: radial-gradient(circle, color-mix(in srgb, var(--accent) 30%, transparent) 0%, color-mix(in srgb, var(--accent-soft) 36%, transparent) 48%, transparent 74%);
   filter: blur(18px);
   pointer-events: none;
   animation: wake-glow-breathe 4s var(--ease) infinite;
@@ -1567,7 +2035,8 @@ body {
 }
 
 .wake-cta:active:not(:disabled) {
-  transform: scale(0.95);
+  transform: scale(var(--press-scale));
+  background: var(--press-bg);
   transition-duration: 100ms;
 }
 
@@ -1719,14 +2188,14 @@ body {
   flex-direction: column;
   align-items: center;
   gap: 10px;
-  width: min(280px, 84vw);
-  padding: 18px 20px;
+  width: min(300px, 86vw);
+  padding: 20px 22px;
   border-radius: 26px;
-  background: rgba(var(--surface-rgb), 0.88);
-  border: 1px solid var(--outline-subtle);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  box-shadow: var(--glint), var(--shadow);
+  background: var(--liquid-glass-bg);
+  border: var(--liquid-glass-border);
+  backdrop-filter: var(--liquid-glass-filter);
+  -webkit-backdrop-filter: var(--liquid-glass-filter);
+  box-shadow: var(--liquid-glass-shadow);
   color: var(--muted);
   font-size: 13px;
 }
@@ -1832,12 +2301,12 @@ body {
   margin-top: auto;
   margin-bottom: 10px;
   padding: 10px 14px;
-  border-radius: 20px;
-  background: var(--glass-bg);
-  border: var(--glass-border);
-  box-shadow: var(--glass-highlight), var(--glass-shadow);
-  backdrop-filter: var(--glass-blur);
-  -webkit-backdrop-filter: var(--glass-blur);
+  border-radius: 22px;
+  background: var(--liquid-glass-bg);
+  border: var(--liquid-glass-border);
+  box-shadow: var(--liquid-glass-shadow);
+  backdrop-filter: var(--liquid-glass-filter);
+  -webkit-backdrop-filter: var(--liquid-glass-filter);
 }
 
 .wake-inline-status {

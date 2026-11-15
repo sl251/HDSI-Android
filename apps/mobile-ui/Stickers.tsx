@@ -4,10 +4,10 @@ import type { NativeBridge } from '../../packages/contracts'
 import { importIntoPack, recentStickers, sortedPacks, stickerSyncPacks, libraryBytes, poolLibrary, type StickerPool, type StickerAsset, type StickerLibrary } from './sticker-state'
 
 export const stickerSource = (asset: StickerAsset) => Capacitor.convertFileSrc(asset.path)
-export function StickerDrawer({ library, disabled, send, close }: { library: StickerLibrary; disabled: boolean; send: (packId: string, asset: StickerAsset) => void; close: () => void }) {
+export function StickerDrawer({ library, disabled, send }: { library: StickerLibrary; disabled: boolean; send: (packId: string, asset: StickerAsset) => void; close?: () => void }) {
   library = poolLibrary(library, 'user')
   const recent = recentStickers(library)
-  return <div className="sticker-drawer" role="region" aria-label="表情抽屉"><div className="section-title"><b>表情包</b><button type="button" aria-label="收起表情抽屉" onClick={close}>×</button></div><div className="sticker-groups">
+  return <div className="sticker-drawer" role="region" aria-label="表情抽屉"><div className="sticker-groups">
     <div className="sticker-group"><h3>最近</h3>{!recent.length && <p className="caption">用过的表情会出现在这里</p>}<div className="sticker-grid">{recent.map(({ packId, sticker }) => <button type="button" key={sticker.id} disabled={disabled} onClick={() => send(packId, sticker)} aria-label="发送最近表情"><img loading="lazy" src={stickerSource(sticker)} alt="最近使用的表情" /></button>)}</div></div>
     {sortedPacks(library).filter(pack => pack.stickers.length).map(pack => <div className="sticker-group" key={pack.id}><h3>{pack.name}</h3><div className="sticker-grid">{pack.stickers.map(sticker => <button type="button" key={sticker.id} disabled={disabled} onClick={() => send(pack.id, sticker)} aria-label={`发送表情 · ${pack.name}`}><img loading="lazy" src={stickerSource(sticker)} alt={pack.name} /></button>)}</div></div>)}
   </div></div>

@@ -39,7 +39,6 @@ export function ModelCenter({ mode = 'connections', settings, setSettings, nativ
   return <section className="model-center">
     {mode === 'tasks' && <>
     <p className="caption">按用途选择模型。对话、记忆、识图和检索都在这里安排。</p>
-    <button className="secondary wide" onClick={() => onNavigate?.('models')}>管理模型连接 →</button>
     {failoverNotice && <div role="status"><p>已开启主叙事备用切换，失败重试与切换可能产生额外 API 消耗。</p><button className="secondary" disabled={busy} onClick={() => { option({ failoverEnabled: false }); setFailoverNotice(false); notify('已撤销自动开启备用切换。') }}>撤销开启备用切换</button></div>}
     <h3>对话与故事</h3>
     <div className="model-roles">{roles.map((role, index) => {
@@ -67,7 +66,7 @@ export function ModelCenter({ mode = 'connections', settings, setSettings, nativ
     </details>
     {children}
     </>}
-    {mode === 'connections' && <><p className="caption">在这里维护服务地址、密钥和模型名称；模型的用途统一在任务分工中设置。</p><button className="secondary wide" onClick={() => onNavigate?.('tasks')}>前往任务分工 →</button>
+    {mode === 'connections' && <><p className="caption">在这里维护服务地址、密钥和模型名称；模型的用途统一在任务分工中设置。</p>
     <details open><summary>管理模型连接 · {providers.length} 条</summary>
     <div className="provider-tabs" aria-label="模型连接">{providers.map((provider, index) => <button key={provider.id} disabled={busy} className={row?.id === provider.id ? 'active' : ''} aria-pressed={row?.id === provider.id} onClick={() => { setSelected(provider.id); setSearch('') }}><small>{String(index + 1).padStart(2, '0')}</small>{provider.label || '未命名'}{!provider.enabled && <span>已停用</span>}</button>)}<button className="add-provider" disabled={busy || providers.length >= 12} onClick={() => { const provider = { ...newProvider(), ...(providers.length ? { useForMain: false, useForCompaction: false, useForAlter: false } : {}) }; setSettings({ ...settings, providers: [...providers, provider] }); setSelected(provider.id) }}>＋ 添加连接</button></div>
     {row && <div className="provider-card"><fieldset disabled={busy} className="provider-editor">

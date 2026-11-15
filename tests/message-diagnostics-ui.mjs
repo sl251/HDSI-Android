@@ -28,6 +28,8 @@ try {
   await page.getByText('诊断测试消息', { exact: true }).click({ button: 'right' })
   assert.equal(await page.getByRole('dialog', { name: '消息诊断', exact: true }).count(), 0)
   await page.getByRole('button', { name: '空间', exact: true }).click()
+  await page.getByRole('button', { name: /^备份、诊断与帮助/ }).click()
+  await page.getByRole('tab', { name: '诊断与帮助', exact: true }).click()
   await page.getByRole('button', { name: /^消息诊断/ }).click()
   const dialog = page.getByRole('dialog', { name: '消息诊断', exact: true })
   await dialog.waitFor()

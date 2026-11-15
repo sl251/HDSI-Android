@@ -93,6 +93,8 @@ try {
   const url = new URL(page.url()); url.search = '?setup'
   await page.goto(url.href)
   await page.getByRole('button', { name: '空间', exact: true }).click()
+  await page.getByRole('button', { name: /^备份、诊断与帮助/ }).click()
+  await page.getByRole('tab', { name: '诊断与帮助', exact: true }).click()
   await page.getByRole('button', { name: /^首次对话准备/ }).click()
   const setup = page.getByRole('region', { name: '首次对话准备' })
   await setup.getByRole('button', { name: '测试连接', exact: true }).click()
