@@ -1,5 +1,10 @@
 // 仅在浏览器 URL 带有 ?demo=1 参数时启用交互式演示数据与快速主题切换栏，不影响任何原生运行与自动化测试。
-const isDemo = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('demo') === '1'
+const demoQuery = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null
+const isDemo = demoQuery?.get('demo') === '1'
+const demoWakeStage = demoQuery?.get('stage') === 'wake'
+const demoWallpaper = demoQuery?.get('bg') === '1'
+const demoTheme = demoQuery?.get('theme')
+const demoPalette = demoQuery?.get('palette')
 
 if (isDemo && typeof window !== 'undefined' && !(window as unknown as { androidBridge?: unknown }).androidBridge) {
   localStorage.setItem('hds.onboarding.v1', '1')
@@ -7,6 +12,7 @@ if (isDemo && typeof window !== 'undefined' && !(window as unknown as { androidB
 
   const avatarSvg = `data:image/svg+xml;utf8,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="120" height="120" viewBox="0 0 120 120"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#6b9cff"/><stop offset="100%" stop-color="#3b68d8"/></linearGradient></defs><rect width="120" height="120" rx="32" fill="url(#g)"/><circle cx="60" cy="46" r="20" fill="#fff" fill-opacity="0.92"/><path d="M28 102c6-20 22-30 32-30s26 10 32 30" fill="#fff" fill-opacity="0.92"/></svg>')}#`
   const postSvg = `data:image/svg+xml;utf8,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="360" height="360" viewBox="0 0 360 360"><defs><linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#dfe7ff"/><stop offset="50%" stop-color="#f4f6fb"/><stop offset="100%" stop-color="#c9dcff"/></linearGradient></defs><rect width="360" height="360" rx="28" fill="url(#bg)"/><circle cx="265" cy="95" r="38" fill="#ffb86c" fill-opacity="0.75"/><path d="M0 260 Q95 210 185 250 T360 235 L360 360 L0 360 Z" fill="#7aa2f7" fill-opacity="0.45"/><path d="M0 290 Q130 245 240 285 T360 275 L360 360 L0 360 Z" fill="#3b68d8" fill-opacity="0.65"/></svg>')}#`
+  const wakeBgSvg = `data:image/svg+xml;utf8,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="720" height="1440" viewBox="0 0 720 1440"><defs><linearGradient id="sky" x1="0" y1="0" x2="0.2" y2="1"><stop offset="0%" stop-color="#7c87ae"/><stop offset="42%" stop-color="#d5bfd1"/><stop offset="76%" stop-color="#edd5d0"/><stop offset="100%" stop-color="#e5ccc3"/></linearGradient><radialGradient id="comet" cx="0.24" cy="0.22" r="0.35"><stop offset="0%" stop-color="#fff8ef" stop-opacity="0.95"/><stop offset="45%" stop-color="#e8d8ff" stop-opacity="0.45"/><stop offset="100%" stop-color="#ffffff" stop-opacity="0"/></radialGradient></defs><rect width="720" height="1440" fill="url(#sky)"/><rect width="720" height="1440" fill="url(#comet)"/><path d="M360 -40 Q270 110 165 255" stroke="#fff7f0" stroke-width="18" stroke-opacity="0.55" fill="none" stroke-linecap="round"/><path d="M360 -40 Q270 110 165 255" stroke="#ffffff" stroke-width="6" stroke-opacity="0.88" fill="none" stroke-linecap="round"/><ellipse cx="220" cy="410" rx="340" ry="70" fill="#fff4ee" fill-opacity="0.35"/><ellipse cx="520" cy="455" rx="280" ry="62" fill="#fff4ee" fill-opacity="0.32"/><circle cx="165" cy="255" r="8" fill="#ffffff" fill-opacity="0.95"/></svg>')}`
 
   const demoCards = [
     {
@@ -41,15 +47,30 @@ if (isDemo && typeof window !== 'undefined' && !(window as unknown as { androidB
 
   const demoState = {
     activeCard: 'demo-xinghe',
-    healthy: true,
+    healthy: !demoWakeStage,
+    notifications: {
+      enabled: true,
+      permission: 'granted',
+      available: true,
+      mode: 'popup',
+      foreground: false,
+      preview: true,
+      quietEnabled: true,
+      quietStart: 23,
+      quietEnd: 8,
+    },
+    avatars: {
+      'demo-xinghe': avatarSvg,
+    } as Record<string, string | undefined>,
     appearance: {
       font: 'default',
       fontSize: 14,
-      backgroundOpacity: 35,
+      backgroundOpacity: demoWallpaper ? 58 : 35,
       panelOpacity: 88,
       backgroundBlur: 0,
-      theme: 'light',
-      palette: 'sky',
+      theme: demoTheme === 'dark' || demoTheme === 'light' || demoTheme === 'system' ? demoTheme : 'light',
+      palette: demoPalette && ['sky', 'sage', 'rose', 'lavender', 'amber'].includes(demoPalette) ? demoPalette : demoWakeStage ? 'amber' : 'sky',
+      backgroundData: demoWallpaper ? wakeBgSvg : undefined,
     },
     settings: {
       activeCard: 'demo-xinghe',
@@ -170,7 +191,7 @@ if (isDemo && typeof window !== 'undefined' && !(window as unknown as { androidB
   localStorage.setItem('hds-lastCharacterReplyTs-demo-xinghe', String(Date.now()))
 
   const methods = [
-    'addListener', 'removeListener', 'settings', 'cards', 'status', 'saveSettings', 'start', 'stop', 'selectCard',
+    'addListener', 'removeListener', 'settings', 'cards', 'pickCard', 'saveCard', 'updateCard', 'deleteCard', 'status', 'saveSettings', 'start', 'stop', 'selectCard',
     'rpc', 'cancelInstall', 'appearance', 'saveAppearance', 'pickAppearanceAsset', 'pickImage', 'pickStickers',
     'stickerImage', 'pruneStickers', 'syncStickerLibrary', 'exportStory', 'restoreStory', 'resetStory',
     'restorePreviousStory', 'notificationSettings', 'setMessageNotifications', 'openNotificationSettings',
@@ -188,7 +209,42 @@ if (isDemo && typeof window !== 'undefined' && !(window as unknown as { androidB
       if (method === 'addListener' || method === 'removeListener') return {}
       if (method === 'settings') return structuredClone(demoState.settings)
       if (method === 'saveSettings') { Object.assign(demoState.settings, options); return {} }
-      if (method === 'cards') return { cards: demoCards }
+      if (method === 'cards') return { cards: structuredClone(demoCards) }
+      if (method === 'pickCard') {
+        const sample = JSON.stringify({
+          spec: 'chara_card_v2',
+          spec_version: '2.0',
+          data: {
+            name: '知夏',
+            description: '城南山坡植物园的插画师，笔记本里夹满了风干的四叶草与手绘天气。',
+            personality: '温和好奇、观察细致',
+            scenario: '初夏晴午的温室花房',
+            first_mes: '窗台边那盆迷迭香今天长出了新芽，要不要凑近看看？',
+            mes_example: '',
+            extensions: {},
+          },
+        })
+        const bytes = new TextEncoder().encode(sample)
+        let binary = ''
+        for (const byte of bytes) binary += String.fromCharCode(byte)
+        return { base64: btoa(binary) }
+      }
+      if (method === 'saveCard') {
+        const card = options.card as typeof demoCards[number]['card']
+        const next = { id: `demo-card-${Date.now()}`, importedAt: new Date().toISOString(), card: structuredClone(card) }
+        demoCards.push(next)
+        return structuredClone(next)
+      }
+      if (method === 'updateCard') {
+        const target = demoCards.find(item => item.id === options.id)
+        if (target && options.card) target.card = structuredClone(options.card as typeof target.card)
+        return structuredClone(target || {})
+      }
+      if (method === 'deleteCard') {
+        const idx = demoCards.findIndex(item => item.id === options.id)
+        if (idx >= 0) demoCards.splice(idx, 1)
+        return {}
+      }
       if (method === 'selectCard') { demoState.activeCard = String(options.id); demoState.settings.activeCard = String(options.id); return {} }
       if (method === 'status') {
         await new Promise(resolve => setTimeout(resolve, 15))
@@ -204,14 +260,21 @@ if (isDemo && typeof window !== 'undefined' && !(window as unknown as { androidB
           version: '0.1.0-preview.9.7.2',
         }
       }
-      if (method === 'start') { demoState.healthy = true; return {} }
+      if (method === 'start') { await new Promise(resolve => setTimeout(resolve, 450)); demoState.healthy = true; return {} }
       if (method === 'stop') { demoState.healthy = false; return {} }
       if (method === 'appearance') return structuredClone(demoState.appearance)
       if (method === 'saveAppearance') { Object.assign(demoState.appearance, options); return {} }
       if (method === 'experienceSettings') return structuredClone(demoState.experience)
       if (method === 'saveExperience') { Object.assign(demoState.experience, options); return structuredClone(demoState.experience) }
-      if (method === 'characterAvatar') return { cardId: options.cardId, path: avatarSvg, revision: 1 }
-      if (method === 'notificationSettings') return { enabled: true, permission: 'granted', available: true }
+      if (method === 'characterAvatar') return { cardId: options.cardId, path: demoState.avatars[String(options.cardId)], revision: 1 }
+      if (method === 'saveCharacterAvatar') {
+        const cardId = String(options.cardId || demoState.activeCard)
+        if (options.clear) demoState.avatars[cardId] = undefined
+        else if (options.dataUri) demoState.avatars[cardId] = String(options.dataUri)
+        return { cardId, path: demoState.avatars[cardId], revision: Date.now() }
+      }
+      if (method === 'notificationSettings') return structuredClone(demoState.notifications)
+      if (method === 'setMessageNotifications') { Object.assign(demoState.notifications, options); return structuredClone(demoState.notifications) }
       if (method === 'notificationLaunch') return {}
       if (method === 'voiceState') return { voices: [{ id: 'v1', name: '午后焙茶（温柔女声）', type: 'builtin', value: '茉莉' }], characters: { 'demo-xinghe': { enabled: true, voiceId: 'v1', threshold: 0.6 } }, defaultVoiceId: 'v1', cooldown: 5, credentialPresent: true }
       if (method === 'startVoiceRecording') return {}
@@ -221,7 +284,7 @@ if (isDemo && typeof window !== 'undefined' && !(window as unknown as { androidB
       if (method === 'rpc') {
         const rpcMethod = String(options.method)
         const payload = (options.payload || {}) as Record<string, unknown>
-        if (rpcMethod === 'messages.history') return { data: demoState.messages }
+        if (rpcMethod === 'messages.history') return { data: demoState.healthy || !demoWakeStage ? demoState.messages : [] }
         if (rpcMethod === 'messages.sendLocal') {
           const userMsg = { id: String(payload.requestId), direction: 'user', content: String(payload.content || ''), images: payload.images as string[] | undefined, occurredAt: new Date().toISOString(), status: 'accepted' }
           const replyMsg = { id: `reply-${Date.now()}`, direction: 'character', content: '我听见啦。茶刚刚泡好，热气还在往上冒呢，等你推门进来。', occurredAt: new Date(Date.now() + 500).toISOString(), status: 'delivered' }

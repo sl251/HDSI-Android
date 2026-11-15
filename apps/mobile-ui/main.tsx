@@ -47,6 +47,8 @@ import { VoiceBubble, VoiceSettings, useVoices } from './Voice'
 import { messageAudio } from '../../packages/contracts/voice'
 import { StickerDrawer, StickerManager, stickerSource } from './Stickers'
 import { readLibrary, stickerImportReason, stickerEntryVisible, stickerSyncPacks, stickerMessageKey, libraryBytes, useSticker, type StickerLibrary, type StickerAsset } from './sticker-state'
+import { SettingsSubpageHeader } from './SettingsSubpageHeader'
+import { dispatchBackOverlay } from './back-stack'
 
 const effectCaption = (key: keyof typeof settingEffects) => settingEffectLabels[settingEffects[key].timing]
 
@@ -100,6 +102,7 @@ function App() {
   const [onboardingTargets] = useState(() => Object.fromEntries(['welcome', 'library', 'models', 'chat', 'story', 'inbox', 'help'].map(key => [key, React.createRef<HTMLElement>()])) as Record<OnboardingTarget, React.RefObject<HTMLElement>>)
   const guideOrigin = useRef<{ page: Page; space: SpacePage | null }>({ page: 'chat', space: null })
   const [pageMotion, setPageMotion] = useState<{ phase: 'idle' | 'exit' | 'enter' | 'edge'; direction: number }>({ phase: 'idle', direction: 0 })
+  const [spaceMotion, setSpaceMotion] = useState<'none' | 'forward' | 'back'>('none')
   const pageTimer = useRef<ReturnType<typeof setTimeout>>()
   const pageFrames = useRef<number[]>([])
   const touchStart = useRef<{ x: number; y: number; id: number; page: Page } | null>(null)
@@ -226,6 +229,23 @@ function App() {
   const appearance = useAppearance(bridge, native, setNotice)
   const [diagnostic, setDiagnostic] = useState<Record<string, unknown> | null>(null)
   const navigation = useRef<HTMLElement>(null)
+  const headerRef = useRef<HTMLElement>(null)
+  const switcherAnchorRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (!switcher) return
+    const handlePointerDown = (event: PointerEvent) => {
+      if (!switcherAnchorRef.current?.contains(event.target as Node)) setSwitcher(false)
+    }
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') { event.preventDefault(); setSwitcher(false) }
+    }
+    document.addEventListener('pointerdown', handlePointerDown)
+    document.addEventListener('keydown', handleKeyDown)
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDown)
+      document.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [switcher])
   useEffect(() => {
     const viewport = window.visualViewport
     if (!viewport) return
@@ -274,9 +294,20 @@ function App() {
     if (page !== 'inbox') previousTab.current = page === 'cards' ? 'chat' : page
     setInboxSource(source); setPage('inbox', direction)
   }
-  const openSpace = (next: typeof spacePage, direction = 0) => { if (page === 'settings') savePosition(); setSpacePage(next); setPage('settings', direction) }
+  const openSpace = (next: typeof spacePage, direction?: number) => {
+    if (page === 'settings') savePosition()
+    if (page === 'settings' && next !== spacePage) {
+      const resolved = direction ?? (next ? 1 : -1)
+      setSpaceMotion(matchMedia('(prefers-reduced-motion: reduce)').matches ? 'none' : resolved >= 0 ? 'forward' : 'back')
+    } else {
+      setSpaceMotion('none')
+    }
+    setSpacePage(next)
+    setPage('settings', page === 'settings' ? 0 : (direction ?? 0))
+  }
   const selectTab = (next: Tab, direction = 0) => next === 'settings' ? openSpace(null, direction) : setPage(next, direction)
   const prepareOnboarding = (target: OnboardingTarget) => {
+    setSwitcher(false)
     cancelPageMotion(); setPageMotion({ phase: 'idle', direction: 0 }); touchStart.current = null
     if (target === 'library') updatePage('cards')
     else if (target === 'models' || target === 'help') { setSpacePage(null); updatePage('settings') }
@@ -294,7 +325,7 @@ function App() {
     touchStart.current = null
     if (onboardingOpen || pageMotion.phase !== 'idle' || event.touches.length !== 1 || !tabs.includes(page as Tab)) return
     const target = event.target as HTMLElement
-    if (target.closest('.modal-backdrop, .sticker-drawer, .composer-wrap, input, textarea, select, audio, [contenteditable="true"]') || document.querySelector('[aria-modal="true"], .image-viewer')) return
+    if (target.closest('.modal-backdrop, .sticker-drawer, .composer-wrap, .select-field, .select-popover, .character-dropdown, input, textarea, select, audio, [contenteditable="true"]') || document.querySelector('[aria-modal="true"], .image-viewer')) return
     const touch = event.touches[0]
     // Leave the screen edges to the system's back gesture.
     if (touch.clientX <= 24 || touch.clientX >= innerWidth - 24) return
@@ -318,6 +349,7 @@ function App() {
   useEffect(() => {
     const handleBack = () => {
       if (onboardingOpen) { closeOnboarding(); return true }
+      if (dispatchBackOverlay()) return true
       if (historySearch) { setHistorySearch(false); return true }
       if (stickerManager) { stickerManagerBack.current?.(); return true }
       if (stickerDrawer) { setStickerDrawer(false); return true }
@@ -328,12 +360,12 @@ function App() {
       if (settingEditor) { setSettingEditor(false); return true }
       if (page === 'inbox') {
         if (inboxBack.current?.()) return true
-        if (inboxSource === 'space') openSpace(null)
+        if (inboxSource === 'space') openSpace(null, -1)
         else setPage(previousTab.current === 'inbox' ? 'chat' : previousTab.current)
         return true
       }
       if (switcher) { setSwitcher(false); return true }
-      if (page === 'settings' && spacePage) { openSpace(null); return true }
+      if (page === 'settings' && spacePage) { openSpace(null, -1); return true }
       if (page === 'cards') { setPage('chat'); return true }
       return false
     }
@@ -377,7 +409,7 @@ function App() {
   useLayoutEffect(() => {
     const element = composer.current
     if (!element) return
-    const resize = () => { element.style.height = 'auto'; element.style.height = `${Math.max(40, Math.min(150, element.scrollHeight))}px`; element.style.overflowY = element.scrollHeight > 150 ? 'auto' : 'hidden' }
+    const resize = () => { element.style.height = 'auto'; element.style.height = `${Math.max(42, Math.min(150, element.scrollHeight))}px`; element.style.overflowY = element.scrollHeight > 150 ? 'auto' : 'hidden' }
     resize(); window.addEventListener('resize', resize)
     return () => window.removeEventListener('resize', resize)
   }, [draft, selected, page, voiceBar, appearance.value.fontSize])
@@ -583,10 +615,17 @@ function App() {
   }
   useEffect(() => {
     document.documentElement.classList.toggle('native-insets', native)
-    const element = navigation.current
-    if (!element) return
-    const observer = new ResizeObserver(() => document.documentElement.style.setProperty('--nav-height', `${element.getBoundingClientRect().height}px`))
-    observer.observe(element)
+    const navEl = navigation.current
+    const headerEl = headerRef.current
+    // 同步顶部状态栏与底部导航栏真实高度，保证见闻页切换栏与输入框精确对齐
+    const syncChromeMetrics = () => {
+      if (navEl) document.documentElement.style.setProperty('--nav-height', `${navEl.getBoundingClientRect().height}px`)
+      if (headerEl) document.documentElement.style.setProperty('--header-height', `${Math.ceil(headerEl.getBoundingClientRect().height)}px`)
+    }
+    syncChromeMetrics()
+    const observer = new ResizeObserver(syncChromeMetrics)
+    if (navEl) observer.observe(navEl)
+    if (headerEl) observer.observe(headerEl)
     return () => observer.disconnect()
   }, [native])
   const importCard = () => act(async () => {
@@ -733,32 +772,194 @@ function App() {
   const firstConversationComplete = messages.some(row => row.direction === 'user' && row.status === 'accepted') && messages.some(row => row.direction === 'character' && row.status === 'delivered')
   useEffect(() => { if (quickStartOpen && firstConversationComplete) closeQuickStart() }, [quickStartOpen, firstConversationComplete])
   const runtimeLabel = !native ? '预览' : healthy ? '在线' : runtime?.state === 'installing' ? '准备核心中' : runtime?.state === 'starting' ? '正在唤醒…' : runtime?.state === 'stopping' ? '正在保存…' : runtime?.state === 'failed' ? '唤醒失败' : '已休眠'
-  const wakePanel = <div className={`wake-panel ${transitioning ? 'waking' : ''}`} role="status"><div><b>{active?.card.name || '故事'} · {runtimeLabel}</b><p>{runtime?.state === 'installing' ? '首次准备约 1 分钟，请稍候…' : runtime?.state === 'starting' ? '正在翻开属于你们的这一页。' : '之前的经历留在这里，下一句话由你开始。'}</p></div>{transitioning ? <progress aria-label={runtimeLabel} /> : <button className="primary wake-button" disabled={!native || busy || !settingsReady} onClick={wake}>{!active ? '选择主角' : !modelReady ? '连接故事模型' : runtime?.state === 'failed' ? '再次唤醒' : '点击唤醒'}<Icon name="arrow" /></button>}{runtime?.state === 'installing' && <button className="text-button" onClick={() => act(() => bridge.cancelInstall())}>取消准备</button>}{runtime?.error && <p className="error">{runtime.error}</p>}</div>
+  const wakeActionLabel = !active ? '选择角色' : !modelReady ? '连接故事模型' : runtime?.state === 'failed' ? '重试唤醒' : '唤醒'
+  const triggerPrimaryWake = () => {
+    if (!active) { setSwitcher(true); return }
+    if (!modelReady) { openSpace('models'); setNotice('为故事选择一个模型，就可以开始了。'); return }
+    void wake()
+  }
+  const chatWakeDisabled = busy || (!!active && modelReady && (!native || !settingsReady))
+  const wakePanel = <div className={`wake-panel ${transitioning ? 'waking' : ''}`} role="status"><div><b>{active?.card.name || '故事'} · {runtimeLabel}</b><p>{runtime?.state === 'installing' ? '首次准备约 1 分钟，请稍候…' : runtime?.state === 'starting' ? '正在翻开属于你们的这一页。' : '之前的经历留在这里，下一句话由你开始。'}</p></div>{transitioning ? <progress aria-label={runtimeLabel} /> : <button className="primary wake-button" disabled={chatWakeDisabled} onClick={triggerPrimaryWake}>{wakeActionLabel}<Icon name="arrow" /></button>}{runtime?.state === 'installing' && <button className="text-button" onClick={() => act(() => bridge.cancelInstall())}>取消准备</button>}{runtime?.error && <p className="error">{runtime.error}</p>}</div>
   return <>
     {appearance.value.backgroundData && <BackgroundImage source={appearance.value.backgroundData} opacity={appearance.value.backgroundOpacity} blur={appearance.value.backgroundBlur} failed={() => setNotice('背景图片无法显示，请在界面设置中重新选择图片。')} />}
-    <div className="app" ref={appShell}><NotificationBanner bridge={bridge} native={native} cardId={selected} messages={messages} reading={page === 'chat'} name={characterName} open={() => setPage('chat')} />
-    <header><div className="wordmark" ref={onboardingTargets.welcome as React.RefObject<HTMLDivElement>}>HDS<span>INTERLUDE</span></div><div className="header-actions"><button className={`status ${runtime?.state === 'healthy' ? 'online' : ''}`} disabled={busy || transitioning || (native && !settingsReady)} onClick={() => healthy ? setPage('chat') : native ? void wake() : setPage('settings')}><i />{runtimeLabel}</button></div></header>
-    <main className={`accordion page-transition page-${pageMotion.phase}`} style={{ '--page-offset': `${pageMotion.direction * 24}px`, '--page-duration': '150ms' } as React.CSSProperties} key={page} data-page={page} onTouchStart={beginSwipe} onTouchMove={event => { if (event.touches.length !== 1) touchStart.current = null }} onTouchEnd={endSwipe} onTouchCancel={() => { touchStart.current = null }} onBlurCapture={() => { void persistSettings().catch(() => {}) }}>
+    <div className={`app${appearance.value.backgroundData ? ' has-photo-bg' : ''}`} ref={appShell}><NotificationBanner bridge={bridge} native={native} cardId={selected} messages={messages} reading={page === 'chat'} name={characterName} open={() => setPage('chat')} />
+    <header ref={headerRef}>
+      <div className="header-leading" ref={switcherAnchorRef}>
+        <button
+          type="button"
+          className={`character-switch header-character-switch${switcher ? ' is-open' : ''}`}
+          aria-label="切换角色或故事"
+          aria-expanded={switcher}
+          aria-haspopup="dialog"
+          aria-controls="header-character-dropdown"
+          onClick={() => setSwitcher(open => !open)}
+        >
+          <span className="header-char-avatar" aria-hidden="true" data-initial={avatar.source ? undefined : (characterName || '此').slice(0, 1)}>
+            {avatar.source && <img src={avatar.source} alt="" />}
+          </span>
+          <span className="header-char-name">{characterName || '此刻之外'}</span>
+          <span className="header-char-chevron" aria-hidden="true">⌄</span>
+        </button>
+        {switcher && (
+          <div id="header-character-dropdown" className="character-dropdown" role="dialog" aria-label="选择角色或故事">
+            <div className="character-dropdown-list">
+              {cards.map(saved => (
+                <button
+                  type="button"
+                  className={`story-choice character-dropdown-item${saved.id === selected ? ' active' : ''}`}
+                  disabled={busy || sending || transitioning}
+                  key={saved.id}
+                  onClick={() => switchCard(saved.id)}
+                >
+                  <span className="story-choice-main">
+                    <span
+                      className="story-choice-avatar"
+                      aria-hidden="true"
+                      data-initial={saved.id === selected && avatar.source ? undefined : saved.card.name.slice(0, 1)}
+                    >
+                      {saved.id === selected && avatar.source && <img src={avatar.source} alt="" />}
+                    </span>
+                    <span className="character-dropdown-name">{saved.card.name}</span>
+                  </span>
+                  <small>{saved.id === selected ? '当前故事' : '继续故事 →'}</small>
+                </button>
+              ))}
+              {!cards.length && <p className="character-dropdown-empty">还没有角色，先导入或创建一个吧。</p>}
+            </div>
+            <div className="character-dropdown-divider" aria-hidden="true" />
+            <button
+              type="button"
+              className="character-dropdown-library"
+              aria-label="导入、创建与管理角色"
+              onClick={() => { setSwitcher(false); setPage('cards') }}
+            >
+              <span className="character-dropdown-library-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="4" y="4" width="12" height="16" rx="3" />
+                  <path d="M16 7h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H9" />
+                  <circle cx="10" cy="10" r="2" />
+                  <path d="M7.5 15.5a3.5 3.5 0 0 1 5 0" />
+                </svg>
+              </span>
+              <span className="character-dropdown-library-copy">
+                <strong>人格与角色库</strong>
+                <small>导入 · 创建 · 修改人设</small>
+              </span>
+              <span className="character-dropdown-library-arrow" aria-hidden="true">→</span>
+            </button>
+          </div>
+        )}
+      </div>
+      <div className="header-actions" ref={onboardingTargets.welcome as React.RefObject<HTMLDivElement>}>
+        {page === 'chat' && (
+          <button type="button" className="header-chat-settings" aria-label="聊天设置" title="聊天设置" onClick={() => openSpace('chat')}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
+              <circle cx="12" cy="12" r="3" />
+            </svg>
+            <span className="header-chat-settings-label">聊天设置</span>
+          </button>
+        )}
+        <button className={`status ${runtime?.state === 'healthy' ? 'online' : ''}`} disabled={busy || transitioning || (native && !settingsReady)} onClick={() => healthy ? setPage('chat') : native ? void wake() : openSpace(null)}><i />{runtimeLabel}</button>
+      </div>
+    </header>
+    <main className={`accordion page-transition page-${pageMotion.phase}`} style={{ '--page-offset': `${pageMotion.direction * 24}px`, '--page-duration': '180ms' } as React.CSSProperties} key={page} data-page={page} onTouchStart={beginSwipe} onTouchMove={event => { if (event.touches.length !== 1) touchStart.current = null }} onTouchEnd={endSwipe} onTouchCancel={() => { touchStart.current = null }} onBlurCapture={() => { void persistSettings().catch(() => {}) }}>
       {notice && <div className="notice" role="status"><span>{notice}</span><button aria-label="关闭提示" onClick={() => setNotice('')}>×</button></div>}
       {restartNeeded && <div className="restart-banner" role="status"><div><b>新配置已就绪</b><span>重启后生效，剧情与记忆会保留。</span></div><button disabled={busy || sending || transitioning} onClick={restart}>立即重启生效</button></div>}
       {page === 'chat' && quickStartOpen && !onboardingOpen && !firstConversationComplete && <QuickStart character={active?.card.name} configured={modelReady} tested={testedConnection === connectionFingerprint} running={healthy} busy={!native || busy || sending || transitioning || !settingsReady} select={() => setPage('cards')} configure={() => openSpace('models')} test={() => void testQuickStart()} wake={() => void wake()} compose={() => { toLatest(); composer.current?.focus() }} close={closeQuickStart} />}
-      {page === 'inbox' && <Inbox bridge={bridge} healthy={runtime?.state === 'healthy'} native={native} configure={() => openSpace(null)} onRootBack={inboxSource === 'space' ? () => openSpace(null) : undefined} backHandler={inboxBack} onUnread={setInboxUnread} />}
+      {page === 'inbox' && <Inbox bridge={bridge} healthy={runtime?.state === 'healthy'} native={native} configure={() => openSpace(null)} onRootBack={inboxSource === 'space' ? () => openSpace(null, -1) : undefined} backHandler={inboxBack} onUnread={setInboxUnread} />}
       {page === 'feed' && (experience.settings.feedEnabled ? <Feed avatar={avatar.source} cardId={selected} key={selected} bridge={scopedBridge} snapshot={experience.snapshot} refresh={experience.refresh} healthy={healthy} name={characterName} /> : <div className="quiet-empty">动态已关闭。<button onClick={() => openSpace('chat')}>前往设置</button></div>)}
       {page === 'feed' && <div className="feed-job-dock"><MediaJobNotice jobs={experience.snapshot.jobs.filter(job => job.purpose === 'feed')} bridge={scopedBridge} healthy={healthy} refresh={experience.refresh} diagnose={setMessageDiagnostic} /></div>}
       {page === 'chat' && <>
-        <div className="page-heading"><div><h1><button className="character-switch" aria-label="切换角色或故事" onClick={() => setSwitcher(true)}>{characterName || '此刻之外'}<span aria-hidden="true">⌄</span></button></h1></div><button className="text-button" onClick={() => openSpace('chat')}>聊天设置</button></div>
         {healthy && <div className="history-toolbar"><button className="text-button" onClick={() => setHistorySearch(true)}>查找聊天记录</button>{hasOlder && <button className="secondary" disabled={loadingOlder} onClick={() => void loadOlder()}>{loadingOlder ? '正在读取…' : '加载更早消息'}</button>}</div>}
-        {!displayMessages.length && !experience.snapshot.streams.length && requestState !== 'sending' && !typing ? <div className="empty-chat"><div className="empty-art"><span /><span /><span /><b>未完待续</b></div><h2>{active ? healthy ? '故事正在继续' : '等你轻轻唤醒' : '先认识一个角色'}</h2><p>{active ? '那些一起经历的日常，都值得被记住。' : '导入一张角色卡，或亲手写下一个人。让日常从这里开始。'}</p>{!active && <button className="primary" onClick={() => setSwitcher(true)}>选择故事的主角<Icon name="arrow" /></button>}</div> : <div className="messages">{displayMessages.map((message, index) => <MessageRow avatar={avatar.source} entrance={index >= messages.length - 6 ? Math.max(0, index - Math.max(0, messages.length - 6)) : undefined} sticker={message.direction === 'user' ? stickers.messages[stickerMessageKey(selected, message.id)] : undefined} key={message.id} message={message} failureReason={messageFailures?.get(message.id)} onDiagnosticFocus={focusMessageDiagnostic} userName={settings.userName} characterName={characterName} lastCharacterReplyTs={lastCharacterReplyTs} onRetry={retryMessage} retryDisabled={sending || busy || !healthy || message.direction !== 'user'} />)}{experience.snapshot.streams.filter(row => !messages.some(m => m.id === row.id)).map(row => <article className={`message character-reply stream-reply${avatar.source ? " has-avatar" : ""}`} key={row.id}>{avatar.source && <img className="character-avatar chat-avatar" src={avatar.source} alt={`${characterName}的头像`} />}<div className="message-label">{characterName}</div><div className="bubble">{row.content}<span className={row.status === 'streaming' ? 'stream-caret' : ''} /></div><small>{row.status === 'streaming' ? '正在输入…' : '回复中断 · 可在原消息下重试'}</small></article>)}<TypingBubble requestState={requestState} typing={typing && !experience.snapshot.streams.some(row => row.status === 'streaming')} characterName={characterName} /><div ref={scroll} /></div>}
-        {newMessages > 0 && <button className="new-messages" onClick={toLatest}>有 {newMessages} 条新消息 · 回到最新</button>}
-        {requestState === 'unknown' && !pendingInHistory && <p role="status">发送结果未知，请保留原内容安全重试。<button disabled={sending || busy || !healthy} onClick={() => void send(retryTarget ?? undefined)}>重试发送</button></p>}
-        {requestState === 'failed' && !pendingInHistory && <div role="status"><MessageStatus message={{ direction: 'user', status: 'failed' }} disabled={sending || busy || !healthy} onRetry={() => void send(retryTarget ?? undefined)} /></div>}
-        {active && !healthy && wakePanel}
+        <div className="chat-stage">
+          {!displayMessages.length && !experience.snapshot.streams.length && requestState !== 'sending' && !typing ? (
+            healthy ? (
+              <div className="chat-empty-spacer" aria-hidden="true" />
+            ) : (
+              <div className="chat-wake-stage" role="status">
+                {transitioning ? (
+                  <div className="wake-progress-inline">
+                    <span className="wake-core-orb is-pulsing" aria-hidden="true">
+                      <svg className="wake-orbit-svg" viewBox="0 0 44 44" fill="none">
+                        <circle cx="22" cy="22" r="19" stroke="currentColor" strokeWidth="1.4" strokeDasharray="18 12" opacity="0.65" />
+                      </svg>
+                      <svg className="wake-spark-svg" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M12 2.5L14.2 9.8L21.5 12L14.2 14.2L12 21.5L9.8 14.2L2.5 12L9.8 9.8L12 2.5Z" />
+                      </svg>
+                    </span>
+                    <progress aria-label={runtimeLabel} />
+                    <span className="wake-progress-label">{runtimeLabel}</span>
+                    {runtime?.state === 'installing' && <small>首次准备约 1 分钟，请稍候…</small>}
+                    {runtime?.state === 'installing' && <button type="button" className="text-button" onClick={() => act(() => bridge.cancelInstall())}>取消准备</button>}
+                  </div>
+                ) : (
+                  <div className="wake-hero">
+                    <span className="wake-aura-glow" aria-hidden="true" />
+                    <span className="wake-aura-ring" aria-hidden="true" />
+                    <span className="wake-aura-ring wake-aura-ring-2" aria-hidden="true" />
+                    <button
+                      type="button"
+                      className={`wake-cta${runtime?.state === 'failed' ? ' is-retry' : ''}`}
+                      aria-label={wakeActionLabel}
+                      disabled={chatWakeDisabled}
+                      onClick={triggerPrimaryWake}
+                    >
+                      <span className="wake-core-orb" aria-hidden="true">
+                        <svg className="wake-orbit-svg" viewBox="0 0 44 44" fill="none">
+                          <circle cx="22" cy="22" r="19" stroke="currentColor" strokeWidth="1.4" strokeDasharray="16 10 4 10" opacity="0.72" />
+                        </svg>
+                        <svg className="wake-spark-svg" viewBox="0 0 24 24" fill="currentColor">
+                          <path d="M12 2.5L14.2 9.8L21.5 12L14.2 14.2L12 21.5L9.8 14.2L2.5 12L9.8 9.8L12 2.5Z" />
+                        </svg>
+                      </span>
+                      <span className="wake-cta-copy" aria-hidden="true">
+                        <strong className="wake-cta-title">{wakeActionLabel}</strong>
+                        <small className="wake-cta-sub">{!active ? '先选择一位主角' : !modelReady ? '前往连接对话模型' : runtime?.state === 'failed' ? '连接未完成 · 点击重试' : `${characterName || '故事核心'} · 轻触唤醒`}</small>
+                      </span>
+                      <span className="wake-cta-wave" aria-hidden="true">
+                        <i /><i /><i />
+                      </span>
+                    </button>
+                  </div>
+                )}
+                {runtime?.error && <p className="error wake-inline-error">{runtime.error}</p>}
+              </div>
+            )
+          ) : (
+            <div className="chat-thread-area">
+              <div className="messages">{displayMessages.map((message, index) => <MessageRow avatar={avatar.source} entrance={index >= messages.length - 6 ? Math.max(0, index - Math.max(0, messages.length - 6)) : undefined} sticker={message.direction === 'user' ? stickers.messages[stickerMessageKey(selected, message.id)] : undefined} key={message.id} message={message} failureReason={messageFailures?.get(message.id)} onDiagnosticFocus={focusMessageDiagnostic} userName={settings.userName} characterName={characterName} lastCharacterReplyTs={lastCharacterReplyTs} onRetry={retryMessage} retryDisabled={sending || busy || !healthy || message.direction !== 'user'} />)}{experience.snapshot.streams.filter(row => !messages.some(m => m.id === row.id)).map(row => <article className={`message character-reply stream-reply${avatar.source ? " has-avatar" : ""}`} key={row.id}>{avatar.source && <img className="character-avatar chat-avatar" src={avatar.source} alt={`${characterName}的头像`} />}<div className="message-label">{characterName}</div><div className="bubble">{row.content}<span className={row.status === 'streaming' ? 'stream-caret' : ''} /></div><small>{row.status === 'streaming' ? '正在输入…' : '回复中断 · 可在原消息下重试'}</small></article>)}<TypingBubble requestState={requestState} typing={typing && !experience.snapshot.streams.some(row => row.status === 'streaming')} characterName={characterName} /><div ref={scroll} /></div>
+              {newMessages > 0 && <button className="new-messages" onClick={toLatest}>有 {newMessages} 条新消息 · 回到最新</button>}
+              {requestState === 'unknown' && !pendingInHistory && <p role="status">发送结果未知，请保留原内容安全重试。<button disabled={sending || busy || !healthy} onClick={() => void send(retryTarget ?? undefined)}>重试发送</button></p>}
+              {requestState === 'failed' && !pendingInHistory && <div role="status"><MessageStatus message={{ direction: 'user', status: 'failed' }} disabled={sending || busy || !healthy} onRetry={() => void send(retryTarget ?? undefined)} /></div>}
+              {active && !healthy && (
+                <div className="wake-inline-bar" role="status">
+                  <span className="wake-inline-status">{runtimeLabel}</span>
+                  {transitioning ? (
+                    <progress aria-label={runtimeLabel} />
+                  ) : (
+                    <button type="button" className="primary wake-pill" disabled={chatWakeDisabled} onClick={triggerPrimaryWake}>
+                      {wakeActionLabel}
+                    </button>
+                  )}
+                  {runtime?.state === 'installing' && <button type="button" className="text-button" onClick={() => act(() => bridge.cancelInstall())}>取消准备</button>}
+                  {runtime?.error && <small className="error">{runtime.error}</small>}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
         <div className="composer-wrap" ref={onboardingTargets.chat as React.RefObject<HTMLDivElement>}><MediaJobNotice jobs={experience.snapshot.jobs.filter(job => job.purpose === 'chat')} bridge={scopedBridge} healthy={healthy} refresh={experience.refresh} diagnose={setMessageDiagnostic} />{mediaDrawer && <MediaComposer onVoiceMode={() => setVoiceBar(true)} onVisual={() => { setMediaDrawer(false); openSpace('visual') }} key={selected} bridge={scopedBridge} healthy={healthy} snapshot={experience.snapshot} refresh={experience.refresh} onPick={source => void pickImage(undefined, source)} close={() => setMediaDrawer(false)} onTranscript={(text, audio) => { const current = getDraft(selected); updateDraft({ content: [current.content, text].filter(Boolean).join("\n"), audio }); composer.current?.focus() }} />}{draftAudio && <div className="draft-audio"><VoiceBubble bridge={bridge} audio={draftAudio} content={draft} /><div className="draft-audio-actions"><button type="button" className="primary-pill" disabled={!native || runtime?.state !== 'healthy' || sending || busy} onClick={() => void send()}>发送语音</button><button type="button" onClick={() => updateDraft({ audio: undefined })}>移除语音</button></div></div>}{stickerDrawer && stickerEntryVisible(stickers) && <StickerDrawer library={stickers} disabled={sending || busy || !healthy} close={() => setStickerDrawer(false)} send={(packId, asset) => void send(undefined, { packId, asset })} />}{attachments.length > 0 && <div className="attachment-tray">{attachments.map(image => <div key={image.id}><img src={image.dataUri} alt="待发送图片" /><button aria-label="移除图片" disabled={sending || busy} onClick={() => setAttachments(current => current.filter(item => item.id !== image.id))}>×</button></div>)}</div>}<form className={`composer${voiceBar ? ' voice-mode' : ''}`} onSubmit={event => { event.preventDefault(); if (!composing.current) void send() }}>{voiceBar ? <><button type="button" className="voice-mode-button" aria-label="切换到键盘输入" disabled={busy || sending || voiceRecording} onClick={() => { setVoiceBar(false); setTimeout(() => composer.current?.focus(), 20) }}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="3" /><path d="M7 9h.01M10 9h.01M14 9h.01M17 9h.01M7 12h.01M10 12h.01M14 12h.01M17 12h.01M8 15h8" strokeLinecap="round" /></svg></button><button type="button" className={`composer-hold-to-talk${voiceRecording ? ' recording' : ''}${voiceCancel ? ' cancelling' : ''}`} disabled={!healthy || busy || sending} onContextMenu={e => e.preventDefault()} onPointerDown={e => { if (busy || sending || !healthy) return; e.currentTarget.setPointerCapture(e.pointerId); void startInlineVoice(e.clientY) }} onPointerMove={e => { if (!voiceHold.current.active) return; const cancel = voiceHold.current.startY - e.clientY > 48; voiceHold.current.cancel = cancel; setVoiceCancel(cancel) }} onPointerUp={() => { if (!voiceHold.current.active) return; if (voiceHold.current.cancel || Date.now() - voiceHold.current.startedAt >= 180) void stopInlineVoice(voiceHold.current.cancel) }} onPointerCancel={() => { if (voiceHold.current.active) void stopInlineVoice(true) }}>{voiceRecording ? (voiceCancel ? '松开手指，取消发送' : '松开 结束 · 上滑取消') : '按住 说话'}</button><button type="button" className="sticker-entry" aria-label="打开表情包" aria-expanded={stickerDrawer} disabled={busy || sending || voiceRecording} onClick={() => { if (stickerEntryVisible(stickers)) setStickerDrawer(value => !value); else setStickerManager(true) }}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M8.5 14.5q3.5 3.5 7 0M9 9.5v1.5M15 9.5v1.5" strokeLinecap="round" /></svg></button><button type="button" className="attach-button" aria-label="添加图片或语音" aria-expanded={mediaDrawer} disabled={busy || sending || voiceRecording} onClick={() => { setStickerDrawer(false); setMediaDrawer(value => !value) }}>＋</button></> : <><button type="button" className="attach-button" aria-label="添加图片或语音" aria-expanded={mediaDrawer} disabled={busy || sending} onClick={() => { composer.current?.blur(); setStickerDrawer(false); setMediaDrawer(value => !value) }}>＋</button>{stickerEntryVisible(stickers) && <button type="button" className="sticker-entry" aria-label="打开表情包" aria-expanded={stickerDrawer} disabled={busy || sending} onClick={() => { composer.current?.blur(); setStickerDrawer(value => !value) }}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M8.5 14.5q3.5 3.5 7 0M9 9.5v1.5M15 9.5v1.5" strokeLinecap="round" /></svg></button>}<textarea ref={composer} disabled={sending} rows={1} value={draft} onCompositionStart={() => { composing.current = true }} onCompositionEnd={() => { composing.current = false }} onKeyDown={event => { const action = composerEnter({ key: event.key, shiftKey: event.shiftKey, ctrlKey: event.ctrlKey, isComposing: event.nativeEvent.isComposing, keyCode: event.keyCode }, composing.current, experience.settings.enterBehavior); if (action === 'send') { event.preventDefault(); void send() } }} onPaste={event => { const images = [...event.clipboardData.items].filter(item => item.type.startsWith('image/')).map(item => item.getAsFile()).filter((file): file is File => file !== null); if (images.length) { event.preventDefault(); void pickImage(images) } }} onChange={event => setDraft(event.target.value)} placeholder={runtime?.state === 'healthy' ? '发消息…' : '唤醒后发送…'} maxLength={12000} aria-label="消息内容" /><button className="send" disabled={!native || runtime?.state !== 'healthy' || sending || busy || (!draft.trim() && !attachments.length && !draftAudio)} aria-label="发送消息"><Icon name="arrow" /></button></>}</form>{attachmentReason && <p id="image-entry-hint" className="composer-hint">{attachmentReason}</p>}</div>
       </>}
       {page === 'cards' && <>
-        <div className="page-heading"><div><h1>角色库<span className="sr-only">。</span></h1></div><button className="text-button" onClick={() => setPage('chat')}>返回故事</button></div>
-        <div className="actions" ref={onboardingTargets.library as React.RefObject<HTMLDivElement>}><button className="primary" disabled={!native || busy} onClick={importCard}><Icon name="plus" />导入角色卡</button><button className="secondary" disabled={!native || busy} onClick={() => setCreateOpen(true)}>手动创建</button><button className="secondary" disabled={!native || busy} onClick={() => { setImportCodeOpen(true) }}>用导入码导入</button><button className="secondary" disabled={!native || busy || !selected} onClick={() => openCardExport(selected)}>导出</button></div>
-        <p className="caption">JSON / PNG / YAML · 酒馆 V1–V3 · typ0 / HDS koishi.yml<br />CHARX、压缩 PNG 元数据和第三方扩展暂不支持执行。</p>
+        <SettingsSubpageHeader
+          title="人格与角色库"
+          backLabel="返回故事"
+          onBack={() => setPage('chat')}
+        />
+        <section className="settings-group cards-import-panel" ref={onboardingTargets.library as React.RefObject<HTMLElement>}>
+          <div className="actions"><button className="primary" disabled={!native || busy} onClick={importCard}><Icon name="plus" />导入角色卡</button><button className="secondary" disabled={!native || busy} onClick={() => setCreateOpen(true)}>手动创建</button><button className="secondary" disabled={!native || busy} onClick={() => { setImportCodeOpen(true) }}>用导入码导入</button><button className="secondary" disabled={!native || busy || !selected} onClick={() => openCardExport(selected)}>导出</button></div>
+        </section>
         <div className="card-list">{cards.map((saved, index) => <article className={`character ${saved.id === selected ? 'chosen' : ''}`} key={saved.id}><div className="character-number">{String(index + 1).padStart(2, '0')}</div><div className="character-body"><div className="character-title"><h2>{saved.card.name}</h2>{saved.id === selected && <span className="tag">当前角色</span>}</div><p>{saved.card.description || saved.card.personality || '尚未填写角色描述'}</p><span className="caption">{saved.card.format.toUpperCase()} · {saved.card.lorebook ? '含世界书' : '独立人设'} · {new Date(saved.importedAt).toLocaleDateString('zh-CN')}</span><div className="card-actions"><button disabled={busy || sending || transitioning || saved.id === selected} onClick={() => switchCard(saved.id)}>{saved.id === selected ? '正在使用' : '使用这个角色'}</button><button onClick={() => setPreview({ card: saved.card, base64: '' })}>查看人设</button><button disabled={busy} onClick={() => setEditingCard(saved)}>编辑</button><button disabled={busy} onClick={() => openCardExport(saved.id)}>导出角色卡</button><button disabled={busy} className="danger" onClick={() => setDeleteTarget(saved)}>删除</button></div></div></article>)}</div>
         {!cards.length && <div className="quiet-empty">角色库还很安静。<br />为第一段故事选一个主角吧。</div>}
       </>}
@@ -771,18 +972,28 @@ function App() {
         </>}
       </>}
       {page === 'settings' && <>
-        <div className="page-heading"><div><h1>{spacePage ? spaceEntries.find(item => item.key === spacePage)?.label : '空间'}<span className="sr-only">。</span></h1></div>{spacePage && <button className="text-button" onClick={() => openSpace(null)}>返回空间</button>}</div>
-        {!spacePage ? <div className="space-home">
+        {spacePage ? (
+          <SettingsSubpageHeader
+            title={spaceEntries.find(item => item.key === spacePage)?.label || '设置'}
+            onBack={() => openSpace(null, -1)}
+          />
+        ) : (
+          <div className="page-heading"><div><h1>空间<span className="sr-only">。</span></h1></div></div>
+        )}
+        {!spacePage ? <div key="space-home" className={`space-home${spaceMotion === 'back' ? ' space-enter-back' : ''}`}>
           <section className="space-wake"><div className="section-title"><h2>故事的节奏</h2><span className="tag">{runtimeLabel}</span></div>{healthy ? <button className="secondary" disabled={busy || sending} onClick={() => act(async () => { await bridge.stop(); setRuntime(await bridge.status()) }, '故事暂时歇息，经历都已留存。')}>让故事休息一下</button> : wakePanel}</section>
-          <div className="settings-directory">{spaceEntries.filter(item => !['advanced', 'system'].includes(item.key)).map(item => <button ref={item.key === 'models' ? onboardingTargets.models as React.RefObject<HTMLButtonElement> : undefined} className="settings-entry" key={item.key} onClick={() => openSpace(item.key)}><span>{item.label}<small>{item.caption}</small></span><Icon name="arrow" /></button>)}</div>
-          <button ref={onboardingTargets.inbox as React.RefObject<HTMLButtonElement>} className="settings-entry" onClick={() => openInbox('space')}><span>信箱与外部连接<small>来信、QQ 接入与会话管理{inboxUnread > 0 ? ` · ${inboxUnread} 条未读` : ''}</small></span><Icon name="arrow" /></button>
-          <button className="settings-entry" onClick={() => setStickerManager(true)}><span>表情包<small>我的表情与角色表情 · 独立素材池</small></span><Icon name="arrow" /></button>
-          <button ref={onboardingTargets.help as React.RefObject<HTMLButtonElement>} className="settings-entry" onClick={() => setMessageDiagnostic('')}><span>消息诊断<small>聊天、生图、发图与检索的排查建议</small></span><Icon name="arrow" /></button>
-          <button className="settings-entry" onClick={startOnboarding}><span>重看新手引导<small>认识角色、模型连接与消息诊断</small></span><Icon name="arrow" /></button>
-          <button className="settings-entry" onClick={() => { setQuickStartOpen(true); setPage('chat') }}><span>首次对话准备<small>检查角色、聊天连接与唤醒状态</small></span><Icon name="arrow" /></button>
-          <div className="settings-secondary">{spaceEntries.filter(item => ['advanced', 'system'].includes(item.key)).map(item => <button className="settings-entry" key={item.key} onClick={() => openSpace(item.key)}><span>{item.label}<small>{item.caption}</small></span><Icon name="arrow" /></button>)}</div>
-        </div> : <div className="space-detail" data-settings-category={spacePage}>
-          <div className="save-status" role="status"><span>{native ? ['chat', 'media', 'visual'].includes(spacePage) ? '点击保存设置后应用' : saveState : '界面预览 · 设置不会保存'}</span>{saveError && <><p className="error">{saveError}</p><button className="text-button" disabled={busy} onClick={() => void persistSettings().catch(() => {})}>重试保存</button></>}</div>
+          <div className="settings-directory">{spaceEntries.filter(item => !['advanced', 'system'].includes(item.key)).map(item => <button ref={item.key === 'models' ? onboardingTargets.models as React.RefObject<HTMLButtonElement> : undefined} className="settings-entry" key={item.key} onClick={() => openSpace(item.key, 1)}><span>{item.label}<small>{item.caption}</small></span></button>)}</div>
+          <button className="settings-entry" onClick={() => setPage('cards')}><span>人格导入与修改<small>导入角色卡、导入码创建、查看与编辑人设 · {cards.length} 位角色</small></span></button>
+          <button ref={onboardingTargets.inbox as React.RefObject<HTMLButtonElement>} className="settings-entry" onClick={() => openInbox('space', 1)}><span>信箱与外部连接<small>来信、QQ 接入与会话管理{inboxUnread > 0 ? ` · ${inboxUnread} 条未读` : ''}</small></span></button>
+          <button className="settings-entry" onClick={() => setStickerManager(true)}><span>表情包<small>我的表情与角色表情 · 独立素材池</small></span></button>
+          <button ref={onboardingTargets.help as React.RefObject<HTMLButtonElement>} className="settings-entry" onClick={() => setMessageDiagnostic('')}><span>消息诊断<small>聊天、生图、发图与检索的排查建议</small></span></button>
+          <button className="settings-entry" onClick={startOnboarding}><span>重看新手引导<small>认识角色、模型连接与消息诊断</small></span></button>
+          <button className="settings-entry" onClick={() => { setQuickStartOpen(true); setPage('chat') }}><span>首次对话准备<small>检查角色、聊天连接与唤醒状态</small></span></button>
+          <div className="settings-secondary">{spaceEntries.filter(item => ['advanced', 'system'].includes(item.key)).map(item => <button className="settings-entry" key={item.key} onClick={() => openSpace(item.key, 1)}><span>{item.label}<small>{item.caption}</small></span></button>)}</div>
+        </div> : <div key={`space-${spacePage}`} className={`space-detail${spaceMotion === 'forward' ? ' space-enter-forward' : ''}`} data-settings-category={spacePage}>
+          {(!native || saveError || !['chat', 'media', 'visual'].includes(spacePage) || saveState !== '设置自动保存') && (
+            <div className="save-status" role="status"><span>{native ? saveState : '界面预览 · 设置不会保存'}</span>{saveError && <><p className="error">{saveError}</p><button className="text-button" disabled={busy} onClick={() => void persistSettings().catch(() => {})}>重试保存</button></>}</div>
+          )}
           {spacePage === 'avatar' && <AvatarSettings key={selected} avatar={avatar} bridge={scopedBridge} cardId={selected} name={characterName} native={native} healthy={healthy} imageEnabled={experience.settings.image.enabled} snapshot={experience.snapshot} refresh={experience.refresh} />}
           {(['chat', 'media', 'visual'] as string[]).includes(spacePage) && <ExperiencePanel cardId={selected} jobs={experience.snapshot.jobs} refreshJobs={experience.refresh} diagnose={setMessageDiagnostic} characterName={characterName} key={`${selected}:${spacePage}`} value={experience.settings} save={async value => { await persistSettings(); await experience.save(value) }} bridge={scopedBridge} native={native} healthy={healthy} mode={spacePage as 'chat' | 'media' | 'visual'}>
           {spacePage === 'chat' && <label className="toggle"><input type="checkbox" checked={settings.modelOptions.mainStreamingMode === 'experimental'} onChange={e => setSettings(previous => ({ ...previous, modelOptions: { ...previous.modelOptions, mainStreamingMode: e.target.checked ? 'experimental' : 'off', ...(e.target.checked ? { mainResponseFormat: 'json-object' as const } : {}) } }))} />流式输出 · 回复边生成边显示</label>}
@@ -798,11 +1009,11 @@ function App() {
           </ModelCenter>}
           {spacePage === 'life' && <><label className="toggle"><input type="checkbox" checked={settings.autoAdvance} onChange={event => setSettings({ ...settings, autoAdvance: event.target.checked })} /><div><b>持续生活与主动联系</b><p>默认关闭。开启后核心可在后台调用模型，产生 API 费用。保存后重启生效。</p></div></label></>}
           {spacePage === 'world' && <>
-            <button className="settings-entry" onClick={() => setPage('cards')}><span>角色库<small>导入、创建、编辑与切换角色</small></span><Icon name="arrow" /></button>
-            <button className="settings-entry" disabled={!native || !healthy || busy} onClick={() => setSettingEditor(true)}><span>修改故事设定<small>主角、世界、关系、视角与时区</small></span><Icon name="arrow" /></button>
-          <section className="settings-group"><details><summary><span><b>故事与身份</b><small>你的称呼与人设 · {effectCaption('identity')}</small></span></summary><label>你的称呼<input value={settings.userName} onChange={event => setSettings({ ...settings, userName: event.target.value })} maxLength={128} /></label><label>你的故事人设<textarea rows={3} value={settings.userProfile} onChange={event => setSettings({ ...settings, userProfile: event.target.value })} maxLength={12000} placeholder="你在这个世界中的身份、与角色的关系…" /></label><p className="caption">离开输入框时自动保存。这里的人设用于新故事，已有故事会保留原来的设定。</p></details></section>
+            <button className="settings-entry" onClick={() => setPage('cards')}><span>角色库<small>导入、创建、编辑与切换角色</small></span></button>
+            <button className="settings-entry" disabled={!native || !healthy || busy} onClick={() => setSettingEditor(true)}><span>修改故事设定<small>主角、世界、关系、视角与时区</small></span></button>
+            <section className="settings-group world-identity-card"><details><summary><span><b>故事与身份</b><small>你的称呼与人设 · {effectCaption('identity')}</small></span></summary><label>你的称呼<input value={settings.userName} onChange={event => setSettings({ ...settings, userName: event.target.value })} maxLength={128} /></label><label>你的故事人设<textarea rows={3} value={settings.userProfile} onChange={event => setSettings({ ...settings, userProfile: event.target.value })} maxLength={12000} placeholder="你在这个世界中的身份、与角色的关系…" /></label><p className="caption">离开输入框时自动保存；仅用于新故事，已有故事会保留原设定。</p></details></section>
 
-            <button className="settings-entry" onClick={() => { setDetail('memory'); setPage('story') }}><span>记忆与故事<small>维护事实与故事中的经历</small></span><Icon name="arrow" /></button>
+            <button className="settings-entry" onClick={() => { setDetail('memory'); setPage('story') }}><span>记忆与故事<small>维护事实与故事中的经历</small></span></button>
             <StoryManagement scope="story" bridge={bridge} cardId={selected} name={active?.card.name || ""} native={native} healthy={healthy} busy={busy || sending || transitioning} act={act} changed={storyChanged} notify={setNotice} />
           </>}
           {(spacePage === 'life' || spacePage === 'advanced') && <LifeSettings openRetrieval={() => openSpace('tasks')} area={spacePage === 'life' ? 'daily' : 'advanced'} value={settings.mobileConfig} change={mobileConfig => setSettings(previous => ({ ...previous, mobileConfig }))} bridge={bridge} healthy={healthy} native={native} notify={setNotice} />}
@@ -818,7 +1029,6 @@ function App() {
     {messageDiagnostic !== null && <MessageDiagnostics jobs={experience.snapshot.jobs} refreshJobs={experience.refresh} configureImages={() => { setMessageDiagnostic(null); openSpace('media') }} key={selected} bridge={scopedBridge} healthy={healthy} messageId={messageDiagnostic} messages={messages} close={() => setMessageDiagnostic(null)} />}
     {settingEditor && <StorySettingEditor key={selected} bridge={bridge} close={() => setSettingEditor(false)} saved={async () => { await refreshStory(); setNotice('故事设定已更新。') }} />}
     {stickerManager && <StickerManager back={stickerManagerBack} library={stickers} bridge={bridge} native={native} change={value => { saveStickers(value); if (runtimeRef.current?.state === 'healthy') setRestartNeeded(true) }} close={() => setStickerManager(false)} notify={setNotice} importReason={!settingsReady ? '正在读取模型设置，请稍候…' : stickerImportReason(settings)} beforeImport={async () => { const reason = stickerImportReason(settingsRef.current); if (reason) throw new Error(reason); await persistSettings() }} configureVision={() => { setStickerManager(false); openSpace('tasks') }} />}
-    {switcher && <div className="modal-backdrop"><section className="modal" role="dialog" aria-modal="true" aria-label="选择角色或故事"><div className="section-title"><h2>下一页，和谁一起？</h2><button autoFocus aria-label="关闭角色选择" onClick={() => setSwitcher(false)}>×</button></div><p className="caption">每个人的经历独立留存，切换后可以继续上次的故事。</p>{cards.map(saved => <button className="story-choice" disabled={busy || sending || transitioning} key={saved.id} onClick={() => switchCard(saved.id)}><span>{saved.card.name}</span><small>{saved.id === selected ? '当前故事' : '继续故事 →'}</small></button>)}<button className="secondary wide" disabled={!native || !healthy || busy} onClick={() => { setSwitcher(false); openSpace('world'); setSettingEditor(true) }}>修改故事设定</button><button className="secondary wide" onClick={() => { setSwitcher(false); setPage('cards') }}>导入、创建与管理角色</button></section></div>}
     {editingCard && <CardEditor key={editingCard.id} saved={editingCard} busy={busy} close={() => setEditingCard(null)} save={async card => { setBusy(true); try { await bridge.updateCard({ id: editingCard.id, card }); setEditingCard(null); await refreshCards(); setNotice('人设已修改，剧情与记忆保留。重新启动 HDS 后生效。') } finally { setBusy(false) } }} />}
     {deleteTarget && <div className="modal-backdrop"><section className="modal" role="dialog" aria-modal="true" aria-label="删除角色确认"><h2>删除「{deleteTarget.card.name}」？</h2><p>将从角色库移除。已有剧情、记忆与原文件仍保留在本机，重新导入原文件可恢复。当前角色运行时会先停止 HDS。</p><div className="actions"><button className="secondary" disabled={busy} onClick={() => setDeleteTarget(null)}>取消</button><button className="primary" disabled={busy} onClick={() => void act(async () => { const id = deleteTarget.id; await bridge.deleteCard({ id }); setDeleteTarget(null); if (selected === id) { setMessages([]); setStory(null) } await refreshCards() }, '角色已从库中移除，历史保留。')}>确认删除</button></div></section></div>}
     {importChoices.length > 0 && <div className="modal-backdrop"><section className="modal" role="dialog" aria-modal="true" aria-label="选择 HDS 人设"><div className="section-title"><h2>文件包含多个人设</h2><button aria-label="取消导入" onClick={() => setImportChoices([])}>×</button></div><p className="caption">选择要导入的 HDS 实例。</p>{importChoices.map((choice, index) => <button key={index} className="secondary wide" onClick={() => { setPreview(choice); setImportChoices([]) }}>{index + 1}. {choice.card.name}</button>)}</section></div>}
