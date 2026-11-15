@@ -56,12 +56,12 @@ https://github.com/user-attachments/assets/809470b8-84a5-4e32-ac78-d59d217fac7b
 
 ## 📥 下载安装
 
-当前发布版本为 **[Preview 9.7.3](https://github.com/sl251/HDSI-Android/releases/tag/v0.1.0-preview.9.7.3)**，Android `versionCode` 为 `39`。
+当前发布版本为 **[Preview 9.7.4](https://github.com/sl251/HDSI-Android/releases/tag/v0.1.0-preview.9.7.4)**，Android `versionCode` 为 `40`。
 
 **[前往 Releases 下载签名 APK](https://github.com/sl251/HDSI-Android/releases/latest)**
 
 - **系统要求：** Android 8.0 及以上，ARM64（arm64-v8a）。
-- **9.7.3 安装包：** [HDS-Android-0.1.0-preview.9.7.3-arm64.apk](https://github.com/sl251/HDSI-Android/releases/download/v0.1.0-preview.9.7.3/HDS-Android-0.1.0-preview.9.7.3-arm64.apk)。
+- **9.7.4 安装包：** [HDS-Android-0.1.0-preview.9.7.4-arm64.apk](https://github.com/sl251/HDSI-Android/releases/download/v0.1.0-preview.9.7.4/HDS-Android-0.1.0-preview.9.7.4-arm64.apk)。
 - **文件校验：** 使用 Release 附件中的 `SHA256SUMS.txt`。
 - **存储空间：** 建议预留至少 1.5 GB；开启实验性本地 QQ 接入还需额外约 1.6 GB。
 
@@ -73,13 +73,15 @@ https://github.com/user-attachments/assets/809470b8-84a5-4e32-ac78-d59d217fac7b
 ## 🚀 快速开始
 
 1. 从 Releases 安装 APK。
-2. 打开「空间 → 模型连接」，添加自己的 API Key 并测试连接。测试可能产生少量接口费用。
+2. 打开「空间 → 模型与任务分工」，在「模型连接」中添加自己的 API Key 并测试连接。测试可能产生少量接口费用。
 3. 在「空间 → 角色与故事」导入角色卡、HDSI 配置或分享码。
 4. 回到「故事」，点击「唤醒」，开始第一段对话。
 
-需要给不同任务分配模型，可以到「空间 → 任务分工」调整。
+需要给不同任务分配模型，可以到「空间 → 模型与任务分工 → 任务分工」调整。
 
 ## 🗞️ 最近更新
+
+**Preview 9.7.4** 带来全面一致的液态玻璃交互体验：故事页在未唤醒时呈现「角色静候名片舱」并清理输入框多余提示，支持顶栏「已休眠 ⇄ 在线」双向切换；表情抽屉改为无标题液态玻璃弹性弹窗且点击外部自动收起；见闻与动态页精简文案并在未唤醒发动态时提供液态玻璃提醒弹窗；空间页重构为 4 大结构化分组并借助顶部分段胶囊切换子页，消除顶部状态栏双层色块；消息诊断弹窗与 6 步基本功能新手引导同步换装液态玻璃，全应用加入统一的轻触按压缩放与底色反馈。详见 [9.7.4 更新说明](docs/PREVIEW9.7.4.md)。
 
 **Preview 9.7.3** 把故事页的睡眠态收成一个明确的主操作，聊天输入栏改为稳定停靠在底部导航上方，并修复了角色表情包相对文字气泡的偏移。顶栏可以直接下拉切换角色或故事，也能从同一菜单进入「人格与角色库」；空间子页与通知设置一并换上统一的液态玻璃样式。详见 [9.7.3 更新说明](docs/PREVIEW9.7.3.md)。
 
@@ -116,7 +118,7 @@ https://github.com/user-attachments/assets/809470b8-84a5-4e32-ac78-d59d217fac7b
 <details>
 <summary><strong>常见问题</strong></summary>
 
-- **模型测试成功，角色却不回复？** 确认角色已唤醒、主叙事任务已配置，再打开「空间 → 消息诊断」查看是哪一步失败。
+- **模型测试成功，角色却不回复？** 确认角色已唤醒、主叙事任务已配置，再打开「空间 → 备份、诊断与帮助 → 消息诊断」查看是哪一步失败。
 - **断网还能使用吗？** 已保存的角色、故事和记忆可以本地查看。生成新回复通常需要网络。
 - **可以切换角色或重新开始吗？** 可以切换角色与故事线。准备重开前建议先备份，再用「从当前人设重新开始」。
 - **锁屏后不再主动发消息？** 检查后台运行方式，以及系统的自启动、后台活动和电池优化设置。不同厂商的限制不一样。
