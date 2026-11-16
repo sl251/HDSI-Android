@@ -6,6 +6,34 @@
 > 视觉依据：2026-11-15 提供的八张手机截图——①「空间 → 生活与世界 → 故事管理 → 重新开始」确认弹窗；②「故事」页尚未完成唤醒时的空白页；③聊天输入栏在屏幕中段悬浮的布局问题；④角色表情包相对文字气泡明显右偏；⑤聊天界面与玻璃导航；⑥空间总览卡片；⑦聊天与输入设置页；⑧原生回车键选项弹窗。截图未作为新图片提交到仓库，本文件记录可执行的页面要求。  
 > 工作原则：优先修改 UI 和组织方式，不重写核心叙事/存储协议；各项通过验收后再合并或发布。
 
+## 2026-11-17 第三轮截图追加｜真正的 Edge-to-Edge 全屏铺满（未实施）
+
+> 现象：用户 2026-11-17 两张实机截图中，**顶部系统状态栏与底部系统手势导航区域露出独立的纯色背景，和 App 内自定义壁纸、模糊玻璃背景断开**。这不是要求隐藏时间、电量或底部手势条；目标是让**背景绘制延伸至物理屏幕四边**，而顶部交互控件、底部导航胶囊、输入栏仍避开系统区域。本章为下一版独立 UI/Android 修复 TODO，**尚未修改 Android 或前端运行代码**。
+
+### 已定位的主要原因（根据当前 `main` 源码）
+
+- `android/app/src/main/java/io/hdsinterlude/android/MainActivity.java` 已调用 `WindowCompat.setDecorFitsSystemWindows(getWindow(), false)`；但同一文件的 `ViewCompat.setOnApplyWindowInsetsListener(container, ...)` 把 `bars.top` / `bars.bottom` / `ime.bottom` 直接转换成了 **WebView 父容器 padding**。结果 WebView 实际绘制区域缩小，上下没有被网页壁纸覆盖；`updateSystemBars()` 把父容器涂成固定 `#20241f` / `#f5f3ed`，在暗色壁纸与其他自定义主题下形成截图里的明显色带。
+- `index.html` 已有 `viewport-fit=cover`；`capacitor.config.ts` 配置 `android.adjustMarginsForEdgeToEdge = 'disable'`；`apps/mobile-ui/style.css` 中 `:root.native-insets` 把 `--safe-top/--safe-bottom` 清零，`main.tsx` 会给原生运行态加这个 class。当前等于是**完全依赖原生父容器 padding 避让系统栏**，CSS 自己不会对完整 WebView 再作避让。
+- `apps/mobile-ui/glass.css` 已使用 `100dvh`、固定背景 `.custom-background { position:fixed; inset:0 }` 以及底部 `nav` 的安全区变量。**单改背景色、简单给 `body` 写 `100vh` 或关闭全部 padding，都不能完整修复**；必须同时检查原生容器布局与 WebView 安全区策略。
+
+### P0｜正确实现全屏绘制（Native + WebView 联动）
+
+- [ ] **让 WebView 的绘制区域真正覆盖状态栏和底部导航栏后方**。检查 `MainActivity` 当前父容器是否可以去除 `bars.top/bottom` padding，并根据 Capacitor 版本/WebView 行为选择唯一的 insets 所属层；原生系统栏透明，避免 `updateSystemBars` 固定纯色底侵占壁纸绘制区域。优先采用 Android 官方 edge-to-edge 做法；不要贸然改成 immersive 模式隐藏系统栏。
+- [ ] **使前端只对交互内容使用安全区间距**：顶栏按钮、角色切换/状态胶囊在状态栏下方，导航胶囊、聊天输入栏和弹层远离系统手势操作区；背后的主题色、渐变与自定义壁纸应延伸到边缘。若 WebView 原生安全区 `env(safe-area-inset-*)` 在目标系统上不稳定，可由原生可靠地注入一次 `--safe-top/--safe-bottom` 变量；不能和 Capacitor 自带 margin 调整、父容器 padding 双重相加。检查并按需移除 `:root.native-insets` 强制置零逻辑。
+- [ ] **主题与壁纸真正贯通上下区域**：深色、浅色、自定义主题色和照片背景在状态栏及手势区没有突变色带；状态栏文字/图标颜色根据实际背景保证可读性，三键导航模式也不要出现不可读或大面积不一致底色。若需轻薄保护渐变，叠在壁纸上而不是另画纯色固定条。
+- [ ] **键盘和系统栏独立处理**：现有 `SOFT_INPUT_ADJUST_RESIZE`、`WindowInsetsCompat.Type.ime()`、前端 `visualViewport` / `ime-visible` / `keyboard-open` 都可能影响底栏位置；改造后需确认 `IME bottom` 不被双重补偿、聊天输入框不钻进键盘底下、不留下第二段底部空白。横屏、刘海屏、系统字号放大和手势导航都必须能避让。
+
+### P1｜可验证的回归与验收
+
+- [ ] **对照实机截图**：按「上方状态栏、页面顶栏、下方四栏胶囊、手势条」四区域截图比较，必须看到背景无明显不连续色块；自定义照片背景上下可连续绘制，系统图标仍正常。测试原截图设备并补至少一种不同厂商设备/模拟器。
+- [ ] **系统/布局矩阵**：Android 8～14（兼容路径）、Android 15/16（Edge-to-Edge 强制路径）；手势导航/三键导航；浅色/深色/照片壁纸；竖屏/横屏；锁屏恢复与键盘弹出/收起。屏幕物理边缘内不得有不可点击的按钮或被手势条遮挡的文本。
+- [ ] **复用已有诊断**：`MainActivity` 已把 `bars`、`imeBottom`、`webViewWidth/Height`、父容器 `padding` 写入 `HdsRuntime.recordInsets`，可以再记录真实 WebView bounds 和 CSS 视口/安全区值，排查重复 inset 与系统栏区域为何未绘制；诊断仅保留尺寸信息，不包含用户图片或聊天内容。
+- [ ] **工程交付**：修改限定在原生窗口/Insets、必要的 CSS/前端安全区与测试，不影响 HDSI rc57、角色故事、数据存储、QQ、音频协议与 APK 签名；先在测试分支生成 APK 做真实 Android 手势/键盘验收，再决定合并或发布。和 Issue #27 的“等价拆分”分开审查。
+
+**修复判定**：背景真正全屏、交互控件安全避让、键盘与系统手势正常、无重复安全区空白；仅把固定底色改成主题颜色不算完成。
+
+---
+
 ## 2026-11-17 第二轮截图追加｜全局设置页冗余文案清理（待实施）
 
 > 新增依据：用户提供「空间 → 界面个性化与通知 → 界面与壁纸」截图，要求删除「外观已保存 · 全局应用于所有角色」一类常驻、重复、无操作价值的提示。以下已经根据当前 `main` 分支移动前端源码检索定位；是**待开发清单**而非已完成修改。只清理视觉冗余，保存机制、持久化、错误处理和用户数据语义不得改变。**本轮属于 UI 行为调整，与 Issue #27 的纯等价拆分分开交付。**
