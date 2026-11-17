@@ -19,7 +19,7 @@
 ### P0｜正确实现全屏绘制（Native + WebView 联动）
 
 - [x] **让 WebView 的绘制区域真正覆盖状态栏和底部导航栏后方**。移除 `MainActivity` 父容器的 `bars.left/top/right/bottom` padding，显式配置透明状态栏/导航栏、API 29+ 关闭强制导航栏对比度蒙层（`setNavigationBarContrastEnforced(false)`）、开启挖孔延伸模式，并将冷启动兜底底色对齐新玻璃色板（`#f4f6fb` / `#0f141d`）。
-- [x] **使前端只对交互内容使用安全区间距**：由 `WindowEdgePolicy` 按屏幕 `density` 换算后通过 `MainActivity`（含 `WebViewListener` 页面加载重放）注入 `--safe-top` / `--safe-right` / `--safe-bottom` / `--safe-left`；移除 `:root.native-insets` 强制置零逻辑，并为 `html` 增加 `scroll-padding-top/bottom` 防止固定栏遮挡聚焦表单项。
+- [x] **使前端只对交互内容使用安全区间距**：由 `WindowEdgePolicy` 按屏幕 `density` 换算后通过 `MainActivity`（含 `WebViewListener` 页面加载重放）注入 `--safe-top` / `--safe-right` / `--safe-bottom` / `--safe-left`；移除 `:root.native-insets` 强制置零逻辑，并为表单控件增加 `scroll-margin-top/bottom` 防止固定栏遮挡聚焦项且不干扰阅读锚点。
 - [x] **主题与壁纸真正贯通上下区域**：新增 `HdsRuntimePlugin.syncSystemBars` 与前端高不透明度自定义壁纸顶栏亮度采样，使状态栏/导航栏图标明暗色跟随应用内主题与壁纸亮度实时切换；三键导航与真机表现待 APK 实测。
 - [x] **键盘和系统栏独立处理**：父容器仅在 `imeVisible && ime.bottom > 0` 时独立垫高底部；`:root.ime-visible` 下自动归零 `--safe-bottom` 与 `--nav-height` 消除双重补偿，原生环境停用 `visualViewport` 启发式检测避免双轨冲突（已覆盖 `tests/story-ui.mjs` 与 `WindowEdgePolicyTest.kt`，待真机软键盘实测）。
 

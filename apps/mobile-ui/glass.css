@@ -59,9 +59,10 @@
   background: var(--paper);
 }
 
-html {
-  scroll-padding-top: calc(var(--header-height, 60px) + 12px);
-  scroll-padding-bottom: calc(var(--nav-height, 64px) + var(--safe-bottom, 0px) + 24px);
+/* 仅对表单输入控件设置滚动边距，避免聚焦时被固定顶栏或底部胶囊遮挡，同时不干扰阅读锚点的 scrollIntoView 定位 */
+:where(input, textarea, select) {
+  scroll-margin-top: calc(var(--header-height, 60px) + 12px);
+  scroll-margin-bottom: calc(var(--nav-height, 64px) + var(--safe-bottom, 0px) + 24px);
 }
 
 body {
