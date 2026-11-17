@@ -103,7 +103,24 @@ class HdsRuntimePlugin : Plugin() {
     @PluginMethod fun characterAvatar(call: PluginCall) { run(call) { CharacterAvatarStore(context, runtime().store).read(call.getString("cardId") ?: "") } }
     @PluginMethod fun saveCharacterAvatar(call: PluginCall) { run(call) { CharacterAvatarStore(context, runtime().store).save(call.data) } }
     @PluginMethod fun appearance(call: PluginCall) { run(call) { AppearanceStore(context).read() } }
-    @PluginMethod fun saveAppearance(call: PluginCall) { run(call) { AppearanceStore(context).save(call.data); JSONObject() } }
+    @PluginMethod fun saveAppearance(call: PluginCall) { run(call) {
+        AppearanceStore(context).save(call.data)
+        val theme = call.data.optString("theme", "system")
+        val resetWallpaper = if (call.data.optBoolean("removeBackground")) null else undefinedWallpaperHint
+        activity?.runOnUiThread { (activity as? MainActivity)?.syncSystemBarAppearance(theme, resetWallpaper) }
+        JSONObject()
+    } }
+    private var undefinedWallpaperHint: Boolean? = null
+    @PluginMethod fun syncSystemBars(call: PluginCall) {
+        val theme = call.getString("theme")
+        val hasWallpaperHint = call.data.has("wallpaperIsDark") && !call.data.isNull("wallpaperIsDark")
+        val wallpaperDark = if (hasWallpaperHint) call.getBoolean("wallpaperIsDark") else null
+        undefinedWallpaperHint = wallpaperDark
+        activity?.runOnUiThread {
+            (activity as? MainActivity)?.syncSystemBarAppearance(theme, wallpaperDark)
+            resolve(call)
+        } ?: resolve(call)
+    }
     @PluginMethod fun pickAppearanceAsset(call: PluginCall) {
         val kind = call.getString("kind")
         if (kind !in listOf("background", "font")) { call.reject("无效界面资源"); return }

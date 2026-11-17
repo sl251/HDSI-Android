@@ -80,6 +80,7 @@ export type NativeBridge = {
   saveCharacterAvatar(options: { cardId: string; dataUri?: string; imageId?: string; clear?: boolean }): Promise<CharacterAvatar>;
   appearance(): Promise<Appearance>;
   saveAppearance(options: Appearance & { removeBackground?: boolean; removeFont?: boolean }): Promise<void>;
+  syncSystemBars?(options: { theme: Appearance['theme']; wallpaperIsDark?: boolean | null }): Promise<void>;
   pickAppearanceAsset(options: { kind: 'background' | 'font' }): Promise<Appearance & { cancelled?: boolean }>;
   openFreeImage?(options: { prompt: string }): Promise<{ cancelled: boolean; dataUri?: string }>;
   pickImage(options?: { limit?: number; source?: 'camera' | 'gallery' }): Promise<{ cancelled: boolean; dataUri?: string; images?: { dataUri: string }[]; errors?: { index: number; message: string }[]; truncated?: boolean }>;

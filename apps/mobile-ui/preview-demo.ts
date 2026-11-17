@@ -192,7 +192,7 @@ if (isDemo && typeof window !== 'undefined' && !(window as unknown as { androidB
 
   const methods = [
     'addListener', 'removeListener', 'settings', 'cards', 'pickCard', 'saveCard', 'updateCard', 'deleteCard', 'status', 'saveSettings', 'start', 'stop', 'selectCard',
-    'rpc', 'cancelInstall', 'appearance', 'saveAppearance', 'pickAppearanceAsset', 'pickImage', 'pickStickers',
+    'rpc', 'cancelInstall', 'appearance', 'saveAppearance', 'syncSystemBars', 'pickAppearanceAsset', 'pickImage', 'pickStickers',
     'stickerImage', 'pruneStickers', 'syncStickerLibrary', 'exportStory', 'restoreStory', 'resetStory',
     'restorePreviousStory', 'notificationSettings', 'setMessageNotifications', 'openNotificationSettings',
     'notificationLaunch', 'saveMessageDiagnostics', 'voiceState', 'previewVoice', 'voiceAudio', 'pickVoiceAudio',

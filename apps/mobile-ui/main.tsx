@@ -274,6 +274,11 @@ function App() {
     }
   }, [stickerDrawer])
   useEffect(() => {
+    // 原生环境由 MainActivity WindowInsetsCompat.Type.ime() 权威驱动 :root.ime-visible，避免横竖屏切换时 visualViewport 基线漂移产生冲突
+    if (native) {
+      appShell.current?.classList.remove('keyboard-open')
+      return
+    }
     const viewport = window.visualViewport
     if (!viewport) return
     let baseline = viewport.height
@@ -284,7 +289,7 @@ function App() {
     }
     viewport.addEventListener('resize', resize); document.addEventListener('focusout', resize)
     return () => { viewport.removeEventListener('resize', resize); document.removeEventListener('focusout', resize) }
-  }, [])
+  }, [native])
   const scroll = useRef<HTMLDivElement>(null)
   const pageRef = useRef(page)
   pageRef.current = page
@@ -642,7 +647,7 @@ function App() {
     requestAnimationFrame(() => window.scrollTo(0, document.documentElement.scrollHeight))
   }
   useEffect(() => {
-    document.documentElement.classList.toggle('native-insets', native)
+    document.documentElement.classList.remove('native-insets')
     const navEl = navigation.current
     const headerEl = headerRef.current
     // 同步顶部状态栏与底部导航栏真实高度，保证见闻页切换栏与输入框精确对齐
@@ -922,13 +927,13 @@ function App() {
           className={`status ${runtime?.state === 'healthy' ? 'online' : ''}`}
           disabled={busy || sending || transitioning || (native && !settingsReady)}
           title={healthy ? '点击进入休眠' : native ? '点击唤醒角色' : undefined}
-          onClick={() => healthy ? void act(async () => { await bridge.stop(); setRuntime(await bridge.status()) }, '故事暂时歇息，经历都已留存。') : native ? void wake() : openSpace(null)}
+          onClick={() => healthy ? void act(async () => { await bridge.stop(); setRuntime(await bridge.status()) }) : native ? void wake() : openSpace(null)}
         ><i />{runtimeLabel}</button>
       </div>
     </header>
     <main className={`accordion page-transition page-${pageMotion.phase}`} style={{ '--page-offset': `${pageMotion.direction * 24}px`, '--page-duration': '180ms' } as React.CSSProperties} key={page} data-page={page} onTouchStart={beginSwipe} onTouchMove={event => { if (event.touches.length !== 1) touchStart.current = null }} onTouchEnd={endSwipe} onTouchCancel={() => { touchStart.current = null }} onBlurCapture={() => { void persistSettings().catch(() => {}) }}>
       {notice && <div className="notice" role="status"><span>{notice}</span><button aria-label="关闭提示" onClick={() => setNotice('')}>×</button></div>}
-      {restartNeeded && <div className="restart-banner" role="status"><div><b>新配置已就绪</b><span>重启后生效，剧情与记忆会保留。</span></div><button disabled={busy || sending || transitioning} onClick={restart}>立即重启生效</button></div>}
+      {restartNeeded && <div className="restart-banner" role="status"><div><b>有新配置待重启</b></div><button disabled={busy || sending || transitioning} onClick={restart}>立即重启生效</button></div>}
       {page === 'chat' && quickStartOpen && !onboardingOpen && !firstConversationComplete && <QuickStart character={active?.card.name} configured={modelReady} tested={testedConnection === connectionFingerprint} running={healthy} busy={!native || busy || sending || transitioning || !settingsReady} select={() => setPage('cards')} configure={() => openSpace('models')} test={() => void testQuickStart()} wake={() => void wake()} compose={() => { toLatest(); composer.current?.focus() }} close={closeQuickStart} />}
       {page === 'inbox' && <Inbox bridge={bridge} healthy={runtime?.state === 'healthy'} native={native} configure={() => openSpace(null)} onRootBack={inboxSource === 'space' ? () => openSpace(null, -1) : undefined} backHandler={inboxBack} onUnread={setInboxUnread} />}
       {page === 'feed' && (experience.settings.feedEnabled ? <Feed avatar={avatar.source} cardId={selected} key={selected} bridge={scopedBridge} snapshot={experience.snapshot} refresh={experience.refresh} healthy={healthy} name={characterName} onWake={triggerPrimaryWake} /> : <div className="quiet-empty">动态已关闭。<button onClick={() => openSpace('chat')}>前往设置</button></div>)}
@@ -1065,10 +1070,10 @@ function App() {
                 </span>
                 <div>
                   <b>{active?.card.name || '未选定角色'}</b>
-                  <small>{!active ? '请在下方“角色与故事”选定主角' : !modelReady ? '尚未配置主对话模型连接' : healthy ? '本地核心运行中，随时响应对话' : '本地核心已休眠，经历与记忆完好留存'}</small>
+                  {(!active || !modelReady) && <small>{!active ? '请在下方“角色与故事”选定主角' : '尚未配置主对话模型连接'}</small>}
                 </div>
               </div>
-              <span className={`tag${healthy ? ' is-online' : ''}`}>{runtimeLabel}</span>
+              {runtime?.state === 'failed' && <span className="tag is-failed">{runtimeLabel}</span>}
             </div>
             {transitioning ? (
               <div className="space-wake-progress" role="status">
@@ -1077,11 +1082,11 @@ function App() {
                 {runtime?.state === 'installing' && <button type="button" className="text-button" onClick={() => act(() => bridge.cancelInstall())}>取消准备</button>}
               </div>
             ) : healthy ? (
-              <button type="button" className="secondary wide space-wake-action" disabled={busy || sending} onClick={() => act(async () => { await bridge.stop(); setRuntime(await bridge.status()) }, '故事暂时歇息，经历都已留存。')}>让故事休息一下</button>
+              <button type="button" className="secondary wide space-wake-action" disabled={busy || sending} onClick={() => act(async () => { await bridge.stop(); setRuntime(await bridge.status()) })}>让故事休息一下</button>
             ) : (
               <button type="button" className="primary wide wake-button space-wake-action" disabled={chatWakeDisabled} onClick={triggerPrimaryWake}>{wakeActionLabel}<Icon name="arrow" /></button>
             )}
-            {runtime?.error && <p className="error">{runtime.error}</p>}
+            {runtime?.error && <p className="error" role="alert">{runtime.error}</p>}
           </section>
           {spaceSections.map(section => (
             <section className="space-group" key={section.title}>
@@ -1131,8 +1136,13 @@ function App() {
             { key: 'backup', label: '存档与设备', active: systemTab === 'backup', select: () => setSystemTab('backup') },
             { key: 'diagnostics', label: '诊断与帮助', active: systemTab === 'diagnostics', select: () => setSystemTab('diagnostics') },
           ], '备份、诊断与帮助分页')}
-          {(!native || saveError || !['chat', 'media', 'visual'].includes(spacePage) || saveState !== '设置自动保存') && (
-            <div className="save-status" role="status"><span>{native ? saveState : '界面预览 · 设置不会保存'}</span>{saveError && <><p className="error">{saveError}</p><button className="text-button" disabled={busy} onClick={() => void persistSettings().catch(() => {})}>重试保存</button></>}</div>
+          {(!native || saveError) && (
+            <div className={`save-status${saveError ? ' is-error' : ''}`} role={saveError ? 'alert' : 'status'}>
+              {!native ? <span>界面预览 · 设置不会保存</span> : <>
+                <p className="error">{saveError}</p>
+                <button className="text-button" disabled={busy} onClick={() => void persistSettings().catch(() => {})}>重试保存</button>
+              </>}
+            </div>
           )}
           {spacePage === 'avatar' && <AvatarSettings key={selected} avatar={avatar} bridge={scopedBridge} cardId={selected} name={characterName} native={native} healthy={healthy} imageEnabled={experience.settings.image.enabled} snapshot={experience.snapshot} refresh={experience.refresh} />}
           {(['chat', 'media', 'visual'] as string[]).includes(spacePage) && <ExperiencePanel cardId={selected} jobs={experience.snapshot.jobs} refreshJobs={experience.refresh} diagnose={setMessageDiagnostic} characterName={characterName} key={`${selected}:${spacePage}`} value={experience.settings} save={async value => { await persistSettings(); await experience.save(value) }} bridge={scopedBridge} native={native} healthy={healthy} mode={spacePage as 'chat' | 'media' | 'visual'}>

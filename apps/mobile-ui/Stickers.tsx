@@ -17,7 +17,7 @@ export function StickerManager({ library, bridge, native, change, close, notify,
   const [pool, setPool] = useState<StickerPool>('user')
   const visible = poolLibrary(library, pool)
   const [busy, setBusy] = useState(false), [name, setName] = useState(''), [target, setTarget] = useState(''), [deleting, setDeleting] = useState(''), [managing, setManaging] = useState(''), [feedback, setFeedback] = useState('')
-  const [renaming, setRenaming] = useState(''), [rename, setRename] = useState('')
+  const [renaming, setRenaming] = useState(''), [rename, setRename] = useState(''), [characterDirty, setCharacterDirty] = useState(false)
   const lock = useRef(false)
   useEffect(() => {
     const dismiss = () => {
@@ -32,13 +32,12 @@ export function StickerManager({ library, bridge, native, change, close, notify,
     document.addEventListener('keydown', escape)
     return () => { back.current = undefined; document.removeEventListener('keydown', escape) }
   }, [back, close, deleting, renaming, managing])
-  const update = async (next: StickerLibrary) => {
-    // Save metadata first: failed persistence must never delete files referenced by the old manifest.
+  const update = async (next: StickerLibrary, touchCharacterPool = pool === 'character') => {
+    // 先保存元数据：若持久化失败，绝不清理旧清单仍在引用的贴纸原文件
     change(next)
-    // Publish the native catalog before pruning. If either persistence step
-    // fails, all originals remain available for a later sync/retry.
     await bridge.syncStickerLibrary({ packs: stickerSyncPacks(next) })
     await bridge.pruneStickers({ keep: [...new Set([...next.packs.flatMap(pack => pack.stickers), ...Object.values(next.messages)].map(asset => asset.id))] })
+    if (touchCharacterPool) setCharacterDirty(true)
   }
   const action = async (task: () => Promise<void>) => { if (lock.current) return; lock.current = true; setBusy(true); setFeedback(''); try { await task() } catch (error) { const text = error instanceof Error ? error.message : String(error); setFeedback(text); notify(text) } finally { lock.current = false; setBusy(false) } }
   const importPack = (directory: boolean) => action(async () => {
@@ -60,15 +59,14 @@ export function StickerManager({ library, bridge, native, change, close, notify,
     {importReason && <div className="media-setup" role="alert"><p>{importReason}</p><button type="button" className="secondary" disabled={busy} onClick={configureVision}>去设置识图模型</button></div>}
     <div className="sticker-import-panel"><h3>导入表情</h3>
     <div className="pool-tabs" role="group" aria-label="表情包池">{(['user', 'character'] as const).map(value => <button disabled={busy} key={value} aria-pressed={pool === value} onClick={() => { setPool(value); setTarget(''); setManaging(''); setDeleting(''); setRenaming('') }}>{value === 'user' ? '我的表情' : '角色表情'}</button>)}</div>
-    <p className="caption">我的表情供你发送；角色表情由角色自主选择，所有角色共用。两个表情池独立管理。</p>
-    <p className="caption">支持 GIF、PNG、WebP、JPG，保留原图与动画；每张最大 10 MiB。</p>
+    <p className="caption">{pool === 'user' ? '我的表情供你发送' : '角色表情由角色自主选择（所有角色共用）'} · 支持 GIF、PNG、WebP、JPG，单张最大 10 MiB。</p>
     <label>导入到<select aria-label="导入到表情包" value={target} disabled={busy} onChange={event => setTarget(event.target.value)}><option value="">新建表情包</option>{visible.packs.map(pack => <option key={pack.id} value={pack.id}>{pack.name}</option>)}</select></label>
     {!target && <label>新包名称<input value={name} disabled={busy} maxLength={80} onChange={event => setName(event.target.value)} placeholder="留空使用文件夹名称" /></label>}
     <div className="media-import-actions"><button className="primary" disabled={!native || busy || !!importReason} onClick={() => void importPack(false)}>多选图片导入</button><button className="secondary" disabled={!native || busy || !!importReason} onClick={() => void importPack(true)}>整文件夹导入</button></div></div>
-    <p className="caption">角色表情变更后，重新唤醒核心生效。已发送的表情继续保留。</p>
+    {characterDirty && <p className="caption" role="status">角色表情已更新，重新唤醒核心后生效。</p>}
     {busy && <p role="status">正在处理表情包…</p>}{feedback && <p role="status">{feedback}</p>}
     {!visible.packs.length && <p className="quiet-empty">这个表情池还没有素材，可以导入或从另一池复制。</p>}
-    {sortedPacks(visible).map(pack => <div className="sticker-group" key={pack.id}><h3>{pack.name} · {pack.stickers.length} 张</h3><div className="actions"><button disabled={busy} onClick={() => { setRenaming(pack.id); setRename(pack.name) }}>重命名</button><button disabled={busy} onClick={() => setManaging(managing === pack.id ? '' : pack.id)}>{managing === pack.id ? '完成管理' : '管理贴纸'}</button><button disabled={busy} onClick={() => void action(async () => { await update({ ...library, packs: [...library.packs, { ...pack, id: crypto.randomUUID(), createdAt: Date.now(), pool: pool === 'user' ? 'character' : 'user', stickers: pack.stickers.map(asset => ({ ...asset, lastUsed: 0 })) }] }); setFeedback('已复制到另一池，两个包可独立管理。') })}>复制到{pool === 'user' ? '角色' : '我的'}表情</button><button className="danger" disabled={busy} onClick={() => setDeleting(pack.id)}>删除包</button></div>
+    {sortedPacks(visible).map(pack => <div className="sticker-group" key={pack.id}><h3>{pack.name} · {pack.stickers.length} 张</h3><div className="actions"><button disabled={busy} onClick={() => { setRenaming(pack.id); setRename(pack.name) }}>重命名</button><button disabled={busy} onClick={() => setManaging(managing === pack.id ? '' : pack.id)}>{managing === pack.id ? '完成管理' : '管理贴纸'}</button><button disabled={busy} onClick={() => void action(async () => { await update({ ...library, packs: [...library.packs, { ...pack, id: crypto.randomUUID(), createdAt: Date.now(), pool: pool === 'user' ? 'character' : 'user', stickers: pack.stickers.map(asset => ({ ...asset, lastUsed: 0 })) }] }, pool === 'user'); setFeedback('已复制到另一池，两个包可独立管理。') })}>复制到{pool === 'user' ? '角色' : '我的'}表情</button><button className="danger" disabled={busy} onClick={() => setDeleting(pack.id)}>删除包</button></div>
       {renaming === pack.id && <form onSubmit={event => { event.preventDefault(); void action(async () => { await update({ ...library, packs: library.packs.map(item => item.id === pack.id ? { ...item, name: rename.trim() } : item) }); setRenaming('') }) }}><label>表情包名称<input aria-label="表情包名称" value={rename} maxLength={80} disabled={busy} onChange={event => setRename(event.target.value)} /></label><button disabled={busy || !rename.trim()} className="secondary">保存包名</button></form>}
       {deleting === pack.id && <div role="alertdialog" aria-label="删除表情包确认"><p>删除「{pack.name}」？已发送的贴纸仍保留。</p><div className="actions"><button disabled={busy} onClick={() => setDeleting('')}>取消</button><button className="danger" disabled={busy} onClick={() => void action(async () => { await update({ ...library, packs: library.packs.filter(item => item.id !== pack.id) }); setDeleting(''); if (target === pack.id) setTarget('') })}>确认删除表情包</button></div></div>}
       <div className="sticker-grid">{pack.stickers.map(sticker => <div key={sticker.id}><img loading="lazy" src={stickerSource(sticker)} alt={pack.name} />{managing === pack.id && <button className="danger" disabled={busy} aria-label="删除单个贴纸" onClick={() => void action(() => update({ ...library, packs: library.packs.map(item => item.id === pack.id ? { ...item, stickers: item.stickers.filter(s => s.id !== sticker.id) } : item) }))}>删除</button>}</div>)}</div>

@@ -31,7 +31,6 @@ export function StorySettingEditor({ bridge, close, saved }: { bridge: NativeBri
   }, [bridge, attempt])
   return <div className="modal-backdrop"><section className="modal" role="dialog" aria-modal="true" aria-label="修改故事设定">
     <div className="section-title"><h2>修改故事设定</h2><button aria-label="关闭编辑" disabled={busy} onClick={close}>×</button></div>
-    <p className="caption">保存后用于当前故事的后续回合，经历与记忆保留。</p>
     {error && <p className="error" role="alert">{error}</p>}
     {!draft ? <><p role="status">{error ? '读取失败' : '正在读取当前故事…'}</p>{error && <button onClick={() => setAttempt(value => value + 1)}>重试读取</button>}</> : <form onSubmit={event => { event.preventDefault(); setBusy(true); setError(''); void (async () => {
       try { await bridge.rpc({ method: 'story.applySetting', payload: storySettingPatch(draft) }); await saved(); close() }

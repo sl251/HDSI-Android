@@ -57,7 +57,7 @@ try {
     window.androidBridge = {}
     window.Capacitor = {
       convertFileSrc: path => path.endsWith('.gif') ? '/fixtures/images/sticker-fixture.gif' : '/fixtures/images/vision-fixture.jpg',
-      PluginHeaders: [{ name: 'HdsRuntime', methods: ['addListener', 'removeListener', 'settings', 'cards', 'status', 'saveSettings', 'start', 'stop', 'selectCard', 'rpc', 'cancelInstall','appearance','saveAppearance','pickAppearanceAsset','pickImage','pickStickers','stickerImage','pruneStickers','syncStickerLibrary','exportStory','restoreStory','resetStory','restorePreviousStory','notificationSettings','setMessageNotifications','openNotificationSettings','notificationLaunch','saveMessageDiagnostics','voiceState','previewVoice','voiceAudio','pickVoiceAudio','cancelVoiceRecording','experienceSettings','characterAvatar'].map(name => ({ name, rtype: 'promise' })) }],
+      PluginHeaders: [{ name: 'HdsRuntime', methods: ['addListener', 'removeListener', 'settings', 'cards', 'status', 'saveSettings', 'start', 'stop', 'selectCard', 'rpc', 'cancelInstall','appearance','saveAppearance','syncSystemBars','pickAppearanceAsset','pickImage','pickStickers','stickerImage','pruneStickers','syncStickerLibrary','exportStory','restoreStory','resetStory','restorePreviousStory','notificationSettings','setMessageNotifications','openNotificationSettings','notificationLaunch','saveMessageDiagnostics','voiceState','previewVoice','voiceAudio','pickVoiceAudio','cancelVoiceRecording','experienceSettings','characterAvatar'].map(name => ({ name, rtype: 'promise' })) }],
       nativePromise: async (_, method, options) => {
         f.calls.push(method)
         if (method === 'experienceSettings') return { enterBehavior: 'send' }
@@ -78,6 +78,7 @@ try {
         if (method === 'pickAppearanceAsset') { f.appearance = { ...f.appearance, backgroundPath: '/data/user/0/io.hdsinterlude.android/no_backup/hds/appearance/background.jpg', backgroundRevision: (f.appearance?.backgroundRevision || 0) + 1 }; localStorage.setItem('test-native-appearance', JSON.stringify(f.appearance)); return f.appearance }
         if (['exportStory','restoreStory','resetStory','restorePreviousStory'].includes(method)) { f.status.state = 'stopped'; f.status.running = false; return { cancelled: false, backup: 'fixture-backup' } }
         if (method === 'appearance') return f.appearance || { font: 'default', fontSize: 14, backgroundOpacity: 35, panelOpacity: 92, backgroundBlur: 0, theme: 'system' }
+        if (method === 'syncSystemBars') { f.systemBarSync = structuredClone(options); return {} }
         if (method === 'saveAppearance') { const backgroundPath = options.removeBackground ? undefined : f.appearance?.backgroundPath; const backgroundRevision = f.appearance?.backgroundRevision; f.appearance = { ...structuredClone(options), backgroundPath, backgroundRevision }; localStorage.setItem('test-native-appearance', JSON.stringify(f.appearance)); return {} }
         if (method === 'settings') return structuredClone(f.prefs)
         if (method === 'cards') return { cards: ['first','second'].map((id, i) => ({ id, importedAt: new Date().toISOString(), card: { name: ['赵旻','林间'][i], format: 'v2', description: '生活中的故事', warnings: [] } })) }
@@ -353,6 +354,19 @@ try {
   assert.equal(await page.locator('.page-heading h1').count(), 0)
   assert.equal(await page.getByText('故事的节奏').count(), 0)
   assert.equal(await page.locator('.space-wake .wake-panel').count(), 0)
+  // 校验空间首页名片：正常在线/休眠态不渲染冗余说明与空 small，不与顶栏重复显示状态胶囊
+  assert.equal(await page.getByText('本地核心运行中，随时响应对话').count(), 0)
+  assert.equal(await page.getByText('本地核心已休眠，经历与记忆完好留存').count(), 0)
+  assert.equal(await page.locator('.space-wake-identity small').count(), 0)
+  assert.equal(await page.locator('.space-wake-head .tag').count(), 0)
+  await page.locator('header .status.online').click()
+  await page.locator('header .status:not(.online)').waitFor()
+  assert.equal(await page.getByText('本地核心已休眠，经历与记忆完好留存').count(), 0)
+  assert.equal(await page.locator('.space-wake-identity small').count(), 0)
+  assert.equal(await page.locator('.space-wake-head .tag').count(), 0)
+  await page.locator('header .status').click()
+  await page.evaluate(() => Object.assign(window.__storyFixture.status, { state: 'healthy', installed: true, environmentState: 'ready' }))
+  await page.locator('header .status.online').waitFor()
   assert.equal(await page.locator('.space-grid .settings-entry svg, .space-home > .settings-entry svg').count(), 0)
   assert.deepEqual(await page.locator('.space-section-label').allTextContents(), ['角色与叙事', '对话与日常', '模型与多模态', '外观与系统'])
   assert.equal(await page.locator('.space-home details').count(), 0)
@@ -415,10 +429,13 @@ try {
   await openCategory('data')
   assert.equal(await page.getByRole('button', { name: '从当前人设重新开始', exact: true }).count(), 0)
   console.log('PASS M4: four tabs, unread badge, source-aware Inbox return, policy/thread/root back priority and character library in switcher.')
+  await openCategory('personal')
+  assert.equal(await page.getByText(/全局应用于所有角色|外观即时生效|外观已保存/).count(), 0)
   await openCategory('notifications')
   await openGroup('消息与提醒')
   const notifications = page.getByRole('checkbox', { name: '角色消息通知', exact: true })
   assert.equal(await notifications.isChecked(), false)
+  assert.equal(await page.locator('.notification-status').count(), 0)
   await notifications.check()
   await page.getByText('系统通知权限或角色消息渠道未开启', { exact: true }).waitFor()
   await page.getByRole('button', { name: '调整系统声音、振动与悬浮权限', exact: true }).click()
@@ -431,7 +448,7 @@ try {
   await page.waitForFunction(() => window.__storyFixture.prefs.modelOptions.visionProviderId === 'light')
   await page.getByLabel('记忆压缩模型').selectOption('light')
   await page.waitForFunction(() => window.__storyFixture.prefs.providers.find(x => x.id === 'light').useForCompaction === true)
-  await page.getByText('已自动保存', { exact: true }).waitFor()
+  assert.equal(await page.locator('.save-status').count(), 0, '普通自动保存静默生效，不插入常驻状态行')
   assert.equal(await page.evaluate(() => window.__storyFixture.prefs.providers.find(x => x.id === 'light').useForCompaction), true)
   await page.getByRole('button', { name: '立即重启生效', exact: true }).waitFor()
   await page.locator('.task-card').filter({ has: page.getByLabel('主叙事模型', { exact: true }) }).locator('summary').click()
@@ -463,7 +480,7 @@ try {
   await page.waitForTimeout(900)
   assert.equal(await page.getByLabel('连接名称', { exact: true }).inputValue(), '自定义连接')
   await page.getByRole('button', { name: '删除此连接', exact: true }).click()
-  await page.getByText('已自动保存', { exact: true }).waitFor()
+  await page.waitForFunction(() => window.__storyFixture.prefs.providers.length === 2)
   await page.evaluate(() => { window.__storyFixture.saveDelay = 600 })
   await openCategory('world')
   await page.getByText('故事与身份', { exact: true }).click()
@@ -517,6 +534,33 @@ try {
   await page.screenshot({ path: 'artifacts/preview7-background-visible.png' })
   await page.screenshot({ path: 'artifacts/story-space.png', fullPage: true })
   await page.getByRole('button', { name: '故事', exact: true }).click()
+  // 验证 Edge-to-Edge 全屏铺满：原生安全区变量注入后壁纸仍贴合视口四边，仅交互控件安全避让，且软键盘弹出时不叠加底部安全区空白
+  await page.evaluate(() => {
+    const r = document.documentElement
+    r.style.setProperty('--safe-top', '36px')
+    r.style.setProperty('--safe-right', '12px')
+    r.style.setProperty('--safe-bottom', '24px')
+    r.style.setProperty('--safe-left', '12px')
+  })
+  const fullBleedBg = await page.locator('.custom-background').boundingBox()
+  const switchBounds = await page.getByRole('button', { name: '切换角色或故事', exact: true }).boundingBox()
+  const navBounds = await page.locator('nav').boundingBox()
+  assert.ok(fullBleedBg.x === 0 && fullBleedBg.y === 0 && fullBleedBg.width === 390 && fullBleedBg.height === 844, '壁纸真正铺满全屏四边')
+  assert.ok(switchBounds.y >= 44 && switchBounds.x >= 26, `顶栏交互控件避让状态栏与左侧挖孔: x=${switchBounds.x}, y=${switchBounds.y}`)
+  assert.ok(Math.abs((844 - (navBounds.y + navBounds.height)) - 34) <= 2, `底部导航胶囊避让手势条: bottomGap=${844 - (navBounds.y + navBounds.height)}`)
+  await page.evaluate(() => document.documentElement.classList.add('ime-visible'))
+  assert.equal(await page.locator('nav').isVisible(), false, '软键盘弹出时隐藏底部导航胶囊')
+  const imeSafeBottom = await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--safe-bottom').trim())
+  assert.equal(imeSafeBottom, '0px', '软键盘弹出时归零底部安全区避免双重补偿')
+  await page.evaluate(() => {
+    const r = document.documentElement
+    r.classList.remove('ime-visible')
+    r.style.removeProperty('--safe-top')
+    r.style.removeProperty('--safe-right')
+    r.style.removeProperty('--safe-bottom')
+    r.style.removeProperty('--safe-left')
+  })
+  await page.waitForFunction(() => Boolean(window.__storyFixture.systemBarSync))
   await page.evaluate(() => { window.__storyFixture.sendDelay = 800; window.__storyFixture.noReply = true })
   await page.getByRole('textbox', { name: '消息内容' }).fill('纯文字发送回归')
   await page.getByRole('button', { name: '发送消息', exact: true }).click()

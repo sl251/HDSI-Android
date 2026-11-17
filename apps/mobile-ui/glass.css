@@ -59,6 +59,12 @@
   background: var(--paper);
 }
 
+/* 仅对表单输入控件设置滚动边距，避免聚焦时被固定顶栏或底部胶囊遮挡，同时不干扰阅读锚点的 scrollIntoView 定位 */
+:where(input, textarea, select) {
+  scroll-margin-top: calc(var(--header-height, 60px) + 12px);
+  scroll-margin-bottom: calc(var(--nav-height, 64px) + var(--safe-bottom, 0px) + 24px);
+}
+
 body {
   font-family: var(--ui-font);
   background:
@@ -110,7 +116,7 @@ header {
   justify-content: space-between;
   gap: 10px;
   border-bottom: 1px solid var(--outline-subtle);
-  padding: calc(10px + var(--safe-top)) 16px 10px;
+  padding: calc(10px + var(--safe-top, 0px)) calc(16px + var(--safe-right, 0px)) 10px calc(16px + var(--safe-left, 0px));
   background: transparent;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
 }
@@ -133,8 +139,12 @@ header > * {
 
 @media (min-width: 600px) {
   header {
-    padding-left: 45px;
-    padding-right: 45px;
+    padding-left: calc(45px + var(--safe-left, 0px));
+    padding-right: calc(45px + var(--safe-right, 0px));
+  }
+  main {
+    padding-left: calc(45px + var(--safe-left, 0px));
+    padding-right: calc(45px + var(--safe-right, 0px));
   }
 }
 
@@ -1220,7 +1230,7 @@ input[type="checkbox"] {
 /* 液态玻璃底部导航胶囊 */
 nav {
   bottom: calc(10px + var(--safe-bottom, 0px));
-  width: calc(100% - 32px);
+  width: calc(100% - 32px - var(--safe-left, 0px) - var(--safe-right, 0px));
   max-width: 520px;
   border: var(--liquid-glass-border);
   border-radius: 999px;
@@ -1280,7 +1290,7 @@ nav button.active::after {
   background: rgba(10, 15, 28, 0.56);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
-  padding: calc(16px + var(--safe-top, 0px)) 16px calc(18px + var(--safe-bottom, 0px));
+  padding: calc(16px + var(--safe-top, 0px)) calc(16px + var(--safe-right, 0px)) calc(18px + var(--safe-bottom, 0px)) calc(16px + var(--safe-left, 0px));
   align-items: flex-end;
   animation: backdrop-fade var(--fast) var(--ease);
 }
@@ -1343,8 +1353,8 @@ nav button.active::after {
 
 .image-viewer > button {
   position: absolute;
-  right: 20px;
-  top: 20px;
+  right: calc(20px + var(--safe-right, 0px));
+  top: calc(20px + var(--safe-top, 0px));
   color: white;
   font-size: 28px;
   min-width: 48px;
@@ -1544,8 +1554,8 @@ pre {
 
 @media (max-width: 360px) {
   header {
-    padding-left: 14px;
-    padding-right: 14px;
+    padding-left: calc(14px + var(--safe-left, 0px));
+    padding-right: calc(14px + var(--safe-right, 0px));
   }
   .model-center > .settings-group,
   section.settings-group {
@@ -1563,7 +1573,7 @@ pre {
     padding: 20px;
   }
   nav {
-    width: calc(100% - 24px);
+    width: calc(100% - 24px - var(--safe-left, 0px) - var(--safe-right, 0px));
   }
 }
 

@@ -33,7 +33,7 @@ export function NotificationSettings({ bridge, native, notify }: { bridge: Nativ
   const fieldsDisabled = !native || !ready || busy
   return <section className="settings-group notification-settings"><details open><summary><span><b>消息与提醒</b><small>后台通知与夜间安静</small></span></summary>
     <div className="notification-section-body">
-      <label className="toggle notification-toggle"><input type="checkbox" aria-label="角色消息通知" checked={value.enabled} disabled={fieldsDisabled} onChange={event => void change({ enabled: event.target.checked })} /><div><b>角色消息通知</b><p>选择你习惯的提醒形式，点击通知回到对应故事。</p></div></label>
+      <label className="toggle notification-toggle"><input type="checkbox" aria-label="角色消息通知" checked={value.enabled} disabled={fieldsDisabled} onChange={event => void change({ enabled: event.target.checked })} /><div><b>角色消息通知</b><p>正在阅读当前故事时不打扰，点击通知可直接回到对应故事。</p></div></label>
       <fieldset className="notification-fieldset" disabled={fieldsDisabled}>
         <SelectField
           label="后台提醒形式"
@@ -49,7 +49,11 @@ export function NotificationSettings({ bridge, native, notify }: { bridge: Nativ
         <p className="caption notification-hint">悬浮提醒、声音和振动还受系统通知渠道控制；开始和结束相同表示全天安静。</p>
         <button type="button" className="text-button notification-system-btn" onClick={() => void bridge.openNotificationSettings().catch(e => notify(String(e)))}>调整系统声音、振动与悬浮权限</button>
       </fieldset>
-      <p className="caption notification-status" role="status">{!native ? '界面预览 · 请在 Android 应用中设置' : blocked ? '系统通知权限或角色消息渠道未开启' : value.enabled && value.available ? '已开启 · 前台阅读时不提醒' : '默认关闭 · 开启时申请系统通知权限'}</p>
+      {(!native || blocked) && (
+        <p className={`caption notification-status${blocked ? ' error' : ''}`} role={blocked ? 'alert' : 'status'}>
+          {!native ? '界面预览 · 请在 Android 应用中设置' : '系统通知权限或角色消息渠道未开启'}
+        </p>
+      )}
     </div>
   </details></section>
 }

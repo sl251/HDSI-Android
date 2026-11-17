@@ -716,19 +716,19 @@
   padding-top: 8px;
 }
 
-/* 单层纯净液态玻璃状态卡片（彻底消除嵌套二次模糊变色） */
+/* 单层纯净液态玻璃状态卡片（彻底消除嵌套二次模糊变色，紧凑纵向留白） */
 .space-home section.space-wake {
-  padding: 18px 20px;
-  margin: 0 0 16px;
+  padding: 14px 18px;
+  margin: 0 0 14px;
   border: var(--liquid-glass-border);
-  border-radius: 26px;
+  border-radius: 24px;
   background: var(--liquid-glass-bg);
   backdrop-filter: var(--liquid-glass-filter);
   -webkit-backdrop-filter: var(--liquid-glass-filter);
   box-shadow: var(--liquid-glass-shadow);
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 11px;
 }
 
 .space-wake-head {
@@ -741,7 +741,7 @@
 .space-wake-identity {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 11px;
   min-width: 0;
 }
 
@@ -769,17 +769,17 @@
 }
 
 .space-wake-avatar {
-  width: 44px;
-  height: 44px;
+  width: 40px;
+  height: 40px;
   flex: none;
-  border-radius: 16px;
+  border-radius: 14px;
   overflow: hidden;
   display: grid;
   place-items: center;
   border: 1px solid var(--liquid-item-border);
   background: linear-gradient(135deg, color-mix(in srgb, var(--accent-soft) 72%, rgba(255, 255, 255, 0.35)), var(--liquid-item-bg));
   color: var(--accent);
-  font-size: 18px;
+  font-size: 16px;
   font-weight: 700;
 }
 
@@ -798,10 +798,14 @@
   flex: none;
 }
 
-.space-wake-head .tag.is-online {
-  color: var(--accent);
-  background: var(--liquid-nav-active-bg);
-  border-color: var(--liquid-nav-active-border);
+.space-wake-head .tag.is-failed {
+  color: var(--danger);
+  background: color-mix(in srgb, var(--danger) 14%, rgba(var(--surface-rgb), 0.72));
+  border: 1px solid color-mix(in srgb, var(--danger) 30%, transparent);
+}
+
+.space-wake-action.wide {
+  margin-top: 0;
 }
 
 .space-wake-progress {
@@ -832,7 +836,7 @@
   font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.4px;
-  color: var(--muted);
+  color: color-mix(in srgb, var(--ink) 64%, var(--muted));
 }
 
 .space-grid {
@@ -875,6 +879,7 @@
 .space-grid .settings-entry small {
   margin-top: 4px;
   line-height: 1.45;
+  color: color-mix(in srgb, var(--ink) 66%, var(--muted));
 }
 
 .settings-directory .settings-entry svg {
