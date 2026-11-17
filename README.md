@@ -56,12 +56,12 @@ https://github.com/user-attachments/assets/809470b8-84a5-4e32-ac78-d59d217fac7b
 
 ## 📥 下载安装
 
-当前发布版本为 **[Preview 9.7.4](https://github.com/sl251/HDSI-Android/releases/tag/v0.1.0-preview.9.7.4)**，Android `versionCode` 为 `40`。
+当前发布版本为 **[Preview 9.7.5](https://github.com/sl251/HDSI-Android/releases/tag/v0.1.0-preview.9.7.5)**，Android `versionCode` 为 `41`。
 
 **[前往 Releases 下载签名 APK](https://github.com/sl251/HDSI-Android/releases/latest)**
 
 - **系统要求：** Android 8.0 及以上，ARM64（arm64-v8a）。
-- **9.7.4 安装包：** [HDS-Android-0.1.0-preview.9.7.4-arm64.apk](https://github.com/sl251/HDSI-Android/releases/download/v0.1.0-preview.9.7.4/HDS-Android-0.1.0-preview.9.7.4-arm64.apk)。
+- **9.7.5 安装包：** [HDS-Android-0.1.0-preview.9.7.5-arm64.apk](https://github.com/sl251/HDSI-Android/releases/download/v0.1.0-preview.9.7.5/HDS-Android-0.1.0-preview.9.7.5-arm64.apk)。
 - **文件校验：** 使用 Release 附件中的 `SHA256SUMS.txt`。
 - **存储空间：** 建议预留至少 1.5 GB；开启实验性本地 QQ 接入还需额外约 1.6 GB。
 
@@ -80,6 +80,8 @@ https://github.com/user-attachments/assets/809470b8-84a5-4e32-ac78-d59d217fac7b
 需要给不同任务分配模型，可以到「空间 → 模型与任务分工 → 任务分工」调整。
 
 ## 🗞️ 最近更新
+
+**Preview 9.7.5** 实现真正的 Edge-to-Edge 全屏铺满绘制：壁纸、渐变与顶部毛玻璃延伸至物理屏幕四边，消除状态栏与底部手势区的纯色色带，同时保持顶栏控件、四栏导航胶囊、聊天输入框与横竖屏挖孔区的安全避让；状态栏时间与电量图标明暗随应用内主题及自定义壁纸亮度动态切换，软键盘弹出独立避让且不叠加多余空白。空间首页精修休眠名片并去除重复状态胶囊，全局设置页改为静默自动保存以消除开关跳动，清理多处冗余常驻口号。详见 [9.7.5 更新说明](docs/PREVIEW9.7.5.md)。
 
 **Preview 9.7.4** 带来全面一致的液态玻璃交互体验：故事页在未唤醒时呈现「角色静候名片舱」并清理输入框多余提示，支持顶栏「已休眠 ⇄ 在线」双向切换；表情抽屉改为无标题液态玻璃弹性弹窗且点击外部自动收起；见闻与动态页精简文案并在未唤醒发动态时提供液态玻璃提醒弹窗；空间页重构为 4 大结构化分组并借助顶部分段胶囊切换子页，消除顶部状态栏双层色块；消息诊断弹窗与 6 步基本功能新手引导同步换装液态玻璃，全应用加入统一的轻触按压缩放与底色反馈。详见 [9.7.4 更新说明](docs/PREVIEW9.7.4.md)。
 
