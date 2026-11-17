@@ -3,6 +3,50 @@ import type { Appearance, NativeBridge } from '../../packages/contracts'
 import { appearanceAssets } from './appearance-assets'
 
 export const defaultAppearance: Appearance = { font: 'default', fontSize: 14, backgroundOpacity: 35, panelOpacity: 84, backgroundBlur: 0, theme: 'system', palette: 'sky' }
+
+function supportsBridgeMethod(method: string): boolean {
+  const headers = (window as unknown as { Capacitor?: { PluginHeaders?: { name: string; methods?: { name: string }[] }[] } }).Capacitor?.PluginHeaders
+  const runtimeHeader = headers?.find(item => item.name === 'HdsRuntime')
+  if (!runtimeHeader?.methods) return true
+  return runtimeHeader.methods.some(item => item.name === method)
+}
+
+async function sampleTopBarDarkness(source: string | undefined, opacityPercent: number, effectiveDarkTheme: boolean): Promise<boolean | null> {
+  if (!source || opacityPercent < 45 || typeof document === 'undefined') return null
+  return new Promise(resolve => {
+    const img = new Image()
+    img.crossOrigin = 'anonymous'
+    img.onload = () => {
+      try {
+        const canvas = document.createElement('canvas')
+        canvas.width = 16
+        canvas.height = 8
+        const ctx = canvas.getContext('2d')
+        if (!ctx || img.naturalWidth <= 0 || img.naturalHeight <= 0) { resolve(null); return }
+        const stripHeight = Math.max(1, Math.round(img.naturalHeight * 0.14))
+        ctx.drawImage(img, 0, 0, img.naturalWidth, stripHeight, 0, 0, 16, 8)
+        const pixels = ctx.getImageData(0, 0, 16, 8).data
+        let luminanceSum = 0
+        const count = pixels.length / 4
+        const base = effectiveDarkTheme ? [15, 20, 29] : [244, 246, 251]
+        const alpha = Math.min(1, Math.max(0, opacityPercent / 100))
+        for (let i = 0; i < pixels.length; i += 4) {
+          const imgAlpha = (pixels[i + 3] / 255) * alpha
+          const r = pixels[i] * imgAlpha + base[0] * (1 - imgAlpha)
+          const g = pixels[i + 1] * imgAlpha + base[1] * (1 - imgAlpha)
+          const b = pixels[i + 2] * imgAlpha + base[2] * (1 - imgAlpha)
+          luminanceSum += 0.299 * r + 0.587 * g + 0.114 * b
+        }
+        resolve(luminanceSum / count < 142)
+      } catch {
+        resolve(null)
+      }
+    }
+    img.onerror = () => resolve(null)
+    img.src = source
+  })
+}
+
 export function useAppearance(bridge: NativeBridge, native: boolean, notify: (text: string) => void) {
   const [value, setValue] = useState<Appearance>(defaultAppearance)
   const [ready, setReady] = useState(!native)
@@ -21,8 +65,15 @@ export function useAppearance(bridge: NativeBridge, native: boolean, notify: (te
       font = new FontFace('HdsCustom', `url("${value.fontData}")`)
       void font.load().then(loaded => { if (!cancelled) document.fonts.add(loaded) }).catch(() => { if (!cancelled) notify('字体无法在当前 WebView 加载，请切换字体或重新导入') })
     }
+    if (native && ready && supportsBridgeMethod('syncSystemBars')) {
+      const systemDark = typeof matchMedia === 'function' && matchMedia('(prefers-color-scheme: dark)').matches
+      const effectiveDark = value.theme === 'dark' ? true : value.theme === 'light' ? false : systemDark
+      void sampleTopBarDarkness(value.backgroundData, value.backgroundOpacity, effectiveDark).then(wallpaperIsDark => {
+        if (!cancelled) void bridge.syncSystemBars?.({ theme: value.theme, wallpaperIsDark }).catch(() => {})
+      })
+    }
     return () => { cancelled = true; if (font) document.fonts.delete(font) }
-  }, [value.font, value.fontData, value.fontSize, value.panelOpacity, value.theme, value.palette])
+  }, [native, ready, value.font, value.fontData, value.fontSize, value.panelOpacity, value.theme, value.palette, value.backgroundData, value.backgroundOpacity])
   const save = (next: Appearance, removals?: { removeBackground?: boolean; removeFont?: boolean }) => {
     setValue(next)
     if (!native || !ready) return

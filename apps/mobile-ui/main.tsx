@@ -274,6 +274,11 @@ function App() {
     }
   }, [stickerDrawer])
   useEffect(() => {
+    // 原生环境由 MainActivity WindowInsetsCompat.Type.ime() 权威驱动 :root.ime-visible，避免横竖屏切换时 visualViewport 基线漂移产生冲突
+    if (native) {
+      appShell.current?.classList.remove('keyboard-open')
+      return
+    }
     const viewport = window.visualViewport
     if (!viewport) return
     let baseline = viewport.height
@@ -284,7 +289,7 @@ function App() {
     }
     viewport.addEventListener('resize', resize); document.addEventListener('focusout', resize)
     return () => { viewport.removeEventListener('resize', resize); document.removeEventListener('focusout', resize) }
-  }, [])
+  }, [native])
   const scroll = useRef<HTMLDivElement>(null)
   const pageRef = useRef(page)
   pageRef.current = page
@@ -642,7 +647,7 @@ function App() {
     requestAnimationFrame(() => window.scrollTo(0, document.documentElement.scrollHeight))
   }
   useEffect(() => {
-    document.documentElement.classList.toggle('native-insets', native)
+    document.documentElement.classList.remove('native-insets')
     const navEl = navigation.current
     const headerEl = headerRef.current
     // 同步顶部状态栏与底部导航栏真实高度，保证见闻页切换栏与输入框精确对齐
