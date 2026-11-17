@@ -1,7 +1,16 @@
 import { createServer } from 'node:http'
 import { build } from 'esbuild'
 import { chromium } from 'playwright-core'
-import { readFileSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
+
+function resolveBrowserLaunch() {
+  if (process.env.HDS_BROWSER) return { executablePath: process.env.HDS_BROWSER, headless: true }
+  try {
+    const bundled = chromium.executablePath()
+    if (bundled && existsSync(bundled)) return { executablePath: bundled, headless: true }
+  } catch { /* 未安装内置 Chromium 时回退系统 Edge */ }
+  return { channel: 'msedge', headless: true }
+}
 
 export async function characterFixture(styles = false) {
   const bundle = await build({ entryPoints: ['apps/mobile-ui/main.tsx'], outfile: 'app.js', bundle: true, write: false, format: 'esm', platform: 'browser', loader: styles ? {} : { '.css': 'empty' }, tsconfig: 'tsconfig.json' })
@@ -9,10 +18,10 @@ export async function characterFixture(styles = false) {
     if (req.url === '/fixture.gif') { res.setHeader('Content-Type', 'image/gif'); res.end(readFileSync('fixtures/images/sticker-fixture.gif')); return }
     const file = bundle.outputFiles.find(file => file.path.replaceAll('\\', '/').endsWith(req.url))
     res.setHeader('Content-Type', req.url === '/app.js' ? 'application/javascript' : req.url === '/app.css' ? 'text/css' : 'text/html; charset=utf-8')
-    res.end(file?.text ?? (req.url === '/app.css' ? '' : '<meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="/app.css"><div id="root"></div><script type="module" src="/app.js"></script>'))
+    res.end(file?.text ?? (req.url === '/app.css' ? '' : '<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><link rel="stylesheet" href="/app.css"><div id="root"></div><script type="module" src="/app.js"></script>'))
   })
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve))
-  const browser = await chromium.launch({ ...(process.env.HDS_BROWSER ? { executablePath: process.env.HDS_BROWSER } : {}), headless: true })
+  const browser = await chromium.launch(resolveBrowserLaunch())
   const page = await browser.newPage()
   const errors = []; page.on('pageerror', error => errors.push(error.message))
   await page.addInitScript(() => {
