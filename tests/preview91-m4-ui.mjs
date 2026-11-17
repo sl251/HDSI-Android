@@ -145,7 +145,11 @@ try {
   await page.getByRole('checkbox', { name: '启用向量检索', exact: true }).check()
   await page.getByRole('checkbox', { name: '对话中实时检索', exact: true }).check()
   await page.getByLabel('世界播种模型', { exact: true }).selectOption('writer')
-  await page.getByText('已自动保存', { exact: true }).waitFor()
+  // 等待自动保存真实写入宿主配置（普通自动保存不再常驻占位文案）
+  for (let attempt = 0; attempt < 40 && !settings.providers[0].useForWorldSeeding; attempt++) {
+    await new Promise(resolve => setTimeout(resolve, 100))
+  }
+  assert.equal(await page.locator('.save-status').count(), 0)
   assert.equal(settings.providers[0].useForEmbedding, true)
   assert.equal(settings.providers[0].useForWorldSeeding, true)
   assert.equal(settings.mobileConfig.sections.embedding.enabled, true)

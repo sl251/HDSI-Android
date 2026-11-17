@@ -76,7 +76,7 @@ export function LifeSettings({ value = {}, change, bridge, healthy, native, noti
     {!area && <h2>生活节奏与表达</h2>}
     {(!area || area === 'advanced') && <details data-config-section="budget"><summary>后台预算<span className="tag">{value.backgroundLimit ?? 120} 次 / 日</span></summary>
       <label>24 小时后台模型请求上限<NumericField value={value.backgroundLimit ?? 120} array={false} min={0} max={10000} step={1} label="24 小时后台模型请求上限" change={item => change({ ...value, backgroundLimit: item as number })} /></label>
-      <p className="caption">滚动 24 小时统计，0 为不限。失败与重试计数，重启不清零；直接聊天和手动整理不占后台额度。修改自动保存，重启后生效。</p>
+      <p className="caption">滚动 24 小时统计，0 为不限。失败与重试计数，重启不清零；直接聊天和手动整理不占后台额度。</p>
       {budget && <p role="status">已用 {budget.used} / {budget.limit || '不限'} 次{budget.exhausted ? ` · 后台额度已用完，最早 ${new Date(budget.resumesAt!).toLocaleString()} 恢复` : ''}</p>}
     </details>}
     {selectedSections.map(section => {
@@ -86,7 +86,7 @@ export function LifeSettings({ value = {}, change, bridge, healthy, native, noti
       const badge = !enabledField ? '固定间隔' : `${enabled ? '已开启' : '已关闭'}${section.key === 'urge' ? ` · ${choices[String(frequency)]}` : section.key === 'memory' ? ` · ${value.sections?.memory?.recentEntryLimit ?? 20} 条` : section.key === 'longHorizon' ? ` · ${choices[String(value.sections?.longHorizon?.intensity ?? 'subtle')]}` : ''}`
       return <details key={section.key} data-config-section={section.key}><summary><span>{names[section.key]}</span><span className="tag">{badge}</span></summary>
         {enabledField && <label className="toggle"><input type="checkbox" checked={enabled} onChange={event => update(section.key, 'enabled', event.target.checked)} /><span>{areas.world.includes(section.key) ? `启用${names[section.key]}` : enabledField.description}</span></label>}
-        <p className="caption">{section.key === 'timelineDirector' ? '默认开启；仅在自动生活回合运行，持续生活总开关仍优先。' : '修改自动保存，重启后生效。'}</p>
+        {section.key === 'timelineDirector' && <p className="caption">默认开启；仅在自动生活回合运行，持续生活总开关仍优先。</p>}
         {section.fields.length > 1 && <details className="advanced"><summary>高级<span className="tag">参数</span></summary>
       <div className={areas.world.includes(section.key) ? 'config-fields' : undefined}>{section.fields.filter(field => field.key !== 'enabled' && !(section.key === 'runtime' && field.key === 'userMessageDebounceSeconds') && !(section.key === 'embedding' && field.key === 'providerId')).map(field => {
         const item = value.sections?.[section.key]?.[field.key] ?? field.default
