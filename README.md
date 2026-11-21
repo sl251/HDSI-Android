@@ -60,6 +60,8 @@ https://github.com/user-attachments/assets/809470b8-84a5-4e32-ac78-d59d217fac7b
 
 **[前往 Releases 下载签名 APK](https://github.com/sl251/HDSI-Android/releases/latest)**
 
+> **开发状态（2026-11-21）：** `main` 已合入前端组件化重构（[PR #30](https://github.com/sl251/HDSI-Android/pull/30)），但上方 **9.7.5 Release APK 不包含这次重构**。需要测试后续代码请区分 GitHub Actions 构建产物与正式 Release，且先备份故事数据；当前仍待真机回归。
+
 - **系统要求：** Android 8.0 及以上，ARM64（arm64-v8a）。
 - **9.7.5 安装包：** [HDS-Android-0.1.0-preview.9.7.5-arm64.apk](https://github.com/sl251/HDSI-Android/releases/download/v0.1.0-preview.9.7.5/HDS-Android-0.1.0-preview.9.7.5-arm64.apk)。
 - **文件校验：** 使用 Release 附件中的 `SHA256SUMS.txt`。
