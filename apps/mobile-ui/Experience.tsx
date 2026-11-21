@@ -3,6 +3,7 @@ import { defaultExperience, type ExperienceSettings, type ExperienceSnapshot, ty
 import { StoredImage } from './StoredImage'
 import { ImageServiceTest } from './ImageServiceTest'
 import { SelectField } from './SelectField'
+import type { RuntimeSession } from './hooks/useRuntimeSession'
 
 // 保留在二级设置页来回切换时的未保存草稿，在保存或底稿更新后清理
 const pendingDrafts = new Map<string, { base: ExperienceSettings; draft: ExperienceSettings }>()
@@ -12,36 +13,61 @@ const enterOptions = [
   { value: 'send', label: '发送消息' },
 ] as const
 
-export function useExperience(bridge: NativeBridge, native: boolean, cardId: string, healthy: boolean) {
+export function useExperience(bridge: NativeBridge, native: boolean, cardId: string, healthy: boolean, scope: Pick<RuntimeSession, 'selectedRef' | 'profileRevision'>) {
   const [settings, setSettings] = useState(defaultExperience)
   const [snapshot, setSnapshot] = useState<ExperienceSnapshot>({ posts: [], jobs: [], streams: [] })
   const [error, setError] = useState('')
-  const current = useRef(cardId); current.current = cardId
+  const { selectedRef, profileRevision } = scope
+  const current = (expected: number) => selectedRef.current === cardId && profileRevision.current === expected
   const refresh = async () => {
-    if (!native || !healthy) return
+    if (!native || !healthy || selectedRef.current !== cardId) return
+    const expected = profileRevision.current
     const result = (await bridge.rpc({ method: 'experience.snapshot' })).data as ExperienceSnapshot
-    if (current.current === cardId && result?.posts && result?.jobs && result?.streams) setSnapshot(result)
+    if (current(expected) && result?.posts && result?.jobs && result?.streams) setSnapshot(result)
   }
   useEffect(() => {
     let alive = true
     setSnapshot({ posts: [], jobs: [], streams: [] }); setSettings(defaultExperience()); setError('')
-    if (native) void bridge.experienceSettings().then(value => { if (alive) { const defaults = defaultExperience(); setSettings({ ...defaults, ...value, visual: { ...defaults.visual, ...value.visual } }) } }).catch(() => {})
+    if (!native) return
+    const load = async () => {
+      if (!alive || cardId !== selectedRef.current) return
+      try {
+        const value = await bridge.experienceSettings()
+        if (alive && selectedRef.current === cardId) {
+          const defaults = defaultExperience()
+          setSettings({ ...defaults, ...value, visual: { ...defaults.visual, ...value.visual } })
+        }
+      } catch {}
+    }
+    void Promise.resolve().then(load)
     return () => { alive = false }
-  }, [cardId, native])
+  }, [bridge, cardId, native, selectedRef])
   useEffect(() => {
     if (!native || !healthy) return
     let alive = true, running = false
-    const read = async () => { if (running) return; running = true; try { const value = (await bridge.rpc({ method: 'experience.snapshot' })).data as ExperienceSnapshot; if (alive && value?.streams) setSnapshot(value) } catch { /* Old builds/previews may not expose new RPCs. */ } finally { running = false } }
-    void read(); const timer = setInterval(() => { if (!document.hidden) void read() }, 1500)
-    const listener = bridge.addListener?.('replyStream', event => {
-      if (!alive || event.cardId !== cardId) return
+    const read = async () => {
+      if (!alive || running || cardId !== selectedRef.current) return
+      const started = profileRevision.current
+      running = true
+      try {
+        const value = (await bridge.rpc({ method: 'experience.snapshot' })).data as ExperienceSnapshot
+        if (alive && current(started) && value?.streams) setSnapshot(value)
+      } catch { /* Old builds/previews may not expose new RPCs. */ }
+      finally { running = false }
+    }
+    void Promise.resolve().then(read)
+    const timer = setInterval(() => { if (!document.hidden) void read() }, 1500)
+    const subscribe = () => alive ? bridge.addListener?.('replyStream', event => {
+      if (!alive || event.cardId !== cardId || selectedRef.current !== cardId) return
       setSnapshot(previous => ({ ...previous, streams: [...previous.streams.filter(s => s.id !== event.id), ...(!event.delivered && event.content && ['streaming', 'failed'].includes(event.status) ? [{ id: event.id, sourceIds: event.sourceIds, content: event.content, occurredAt: event.occurredAt, status: event.status === 'failed' ? 'interrupted' as const : 'streaming' as const }] : [])] }))
-    }).catch(() => undefined)
-    return () => { alive = false; clearInterval(timer); void listener?.then(handle => handle?.remove()) }
-  }, [native, healthy, cardId])
+    }) : undefined
+    const listener = Promise.resolve().then(subscribe).catch(() => undefined)
+    return () => { alive = false; clearInterval(timer); void listener.then(handle => handle?.remove()).catch(() => {}) }
+  }, [bridge, native, healthy, cardId, selectedRef, profileRevision])
   const save = async (value: ExperienceSettings) => {
+    const expected = profileRevision.current
     const result = await bridge.saveExperience({ ...value, cardId })
-    if (current.current === cardId) { const defaults = defaultExperience(); setSettings({ ...defaults, ...result, visual: { ...defaults.visual, ...result.visual } }); setError('') }
+    if (current(expected)) { const defaults = defaultExperience(); setSettings({ ...defaults, ...result, visual: { ...defaults.visual, ...result.visual } }); setError('') }
   }
   return { settings, snapshot, refresh, save, error, setError }
 }
@@ -54,7 +80,11 @@ export function ExperiencePanel({ value, save, bridge, native, healthy, mode, ch
   })
   const [busy, setBusy] = useState(false), [notice, setNotice] = useState(''), [noticeError, setNoticeError] = useState(false)
   const noticeTimer = useRef<ReturnType<typeof setTimeout>>()
-  useEffect(() => () => clearTimeout(noticeTimer.current), [])
+  const mounted = useRef(false)
+  useEffect(() => {
+    mounted.current = true
+    return () => { mounted.current = false; clearTimeout(noticeTimer.current) }
+  }, [])
   const updateDraft = (updater: ExperienceSettings | ((prev: ExperienceSettings) => ExperienceSettings)) => {
     setDraftState(prev => {
       const next = typeof updater === 'function' ? updater(prev) : updater
@@ -71,9 +101,12 @@ export function ExperiencePanel({ value, save, bridge, native, healthy, mode, ch
   const submit = async () => {
     clearTimeout(noticeTimer.current); setBusy(true); setNotice(''); setNoticeError(false)
     try {
-      await save(draft); pendingDrafts.delete(draftKey); setNotice('已保存')
+      await save(draft)
+      pendingDrafts.delete(draftKey)
+      if (!mounted.current) return
+      setNotice('已保存')
       noticeTimer.current = setTimeout(() => setNotice(''), 2200)
-    } catch (e) { setNoticeError(true); setNotice(String(e)) } finally { setBusy(false) }
+    } catch (e) { if (mounted.current) { setNoticeError(true); setNotice(String(e)) } } finally { if (mounted.current) setBusy(false) }
   }
   return <section className="experience-settings"><div className="settings-group"><fieldset disabled={!native || busy}>
     {mode === 'chat' && <><SelectField label="回车键" value={draft.enterBehavior} options={enterOptions} disabled={!native || busy} onChange={enterBehavior => updateDraft({ ...draft, enterBehavior })} helperText={draft.enterBehavior === 'send' ? '回车发送 · Shift+Enter 换行 · 中文输入法选词确认时不会误发' : '回车换行 · Ctrl+Enter 发送 · 中文输入法选词确认时不会误发'} /><label className="toggle"><input type="checkbox" checked={draft.feedEnabled} onChange={e => updateDraft({ ...draft, feedEnabled: e.target.checked })} />启用当前应用的动态功能</label><p className="caption field-help">开启后可在底部「动态」发布图文、点赞和评论；你与角色的动态仅属于当前故事，关闭会暂停互动并保留已有内容。</p></>}

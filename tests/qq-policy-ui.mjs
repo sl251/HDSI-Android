@@ -1,5 +1,7 @@
 import { chromium } from 'playwright-core'
 import assert from 'node:assert/strict'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 
 const browser = await chromium.launch({ executablePath: process.env.HDS_BROWSER || '/root/.cache/ms-playwright/chromium-1223/chrome-linux64/chrome', headless: true, args: process.env.HDS_BROWSER_LOW_RESOURCES === '1' ? ['--single-process', '--no-zygote', '--disable-gpu'] : [] })
 try {
@@ -88,7 +90,7 @@ try {
   await reopened.getByRole('combobox', { name: /^发言意愿/ }).selectOption('custom')
   assert.equal(await reopened.getByLabel('发言阈值', { exact: true }).inputValue(), '0.42')
   await page.emulateMedia({ colorScheme: 'dark' })
-  await page.screenshot({ path: '/tmp/hds-m1-qq-policy.png', fullPage: true })
+  await page.screenshot({ path: join(tmpdir(), 'hds-m1-qq-policy.png'), fullPage: true })
   await reopened.getByRole('combobox', { name: /^发言意愿/ }).selectOption('off')
   await dialog.getByRole('button', { name: '保存回复范围' }).click()
   await dialog.waitFor({ state: 'hidden' })
