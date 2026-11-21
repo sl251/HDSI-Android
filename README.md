@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/sl251/HDSI-Android/releases/latest"><img alt="Download Latest Preview" src="https://img.shields.io/badge/Download-Latest%20Preview-2e7d96?style=for-the-badge&logo=android&logoColor=white"></a>
+  <a href="https://github.com/sl251/HDSI-Android/releases"><img alt="Browse Preview Releases" src="https://img.shields.io/badge/Download-Latest%20Preview-2e7d96?style=for-the-badge&logo=android&logoColor=white"></a>
   <a href="https://github.com/sl251/HDSI-Android/blob/main/LICENSE"><img alt="License AGPL-3.0" src="https://img.shields.io/badge/License-AGPL--3.0-7b659e?style=for-the-badge"></a>
   <img alt="Android 8.0+" src="https://img.shields.io/badge/Android-8.0%2B-627b72?style=for-the-badge">
 </p>
@@ -58,7 +58,7 @@ https://github.com/user-attachments/assets/809470b8-84a5-4e32-ac78-d59d217fac7b
 
 当前发布版本为 **[Preview 9.7.6](https://github.com/sl251/HDSI-Android/releases/tag/v0.1.0-preview.9.7.6)**，Android `versionCode` 为 `42`。
 
-**[前往 Releases 下载签名 APK](https://github.com/sl251/HDSI-Android/releases/latest)**
+**[前往 Releases 下载签名 APK](https://github.com/sl251/HDSI-Android/releases)**
 
 > **Preview 9.7.6（2026-11-21）：** 集成 [PR #30](https://github.com/sl251/HDSI-Android/pull/30) 前端组件化重构并调整版本化发布流程。主要为内部结构优化，真机回归仍需继续；旧版升级前请备份故事数据。
 
