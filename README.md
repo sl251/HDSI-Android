@@ -56,14 +56,14 @@ https://github.com/user-attachments/assets/809470b8-84a5-4e32-ac78-d59d217fac7b
 
 ## 📥 下载安装
 
-当前发布版本为 **[Preview 9.7.5](https://github.com/sl251/HDSI-Android/releases/tag/v0.1.0-preview.9.7.5)**，Android `versionCode` 为 `41`。
+当前发布版本为 **[Preview 9.7.6](https://github.com/sl251/HDSI-Android/releases/tag/v0.1.0-preview.9.7.6)**，Android `versionCode` 为 `42`。
 
 **[前往 Releases 下载签名 APK](https://github.com/sl251/HDSI-Android/releases/latest)**
 
-> **开发状态（2026-11-21）：** `main` 已合入前端组件化重构（[PR #30](https://github.com/sl251/HDSI-Android/pull/30)），但上方 **9.7.5 Release APK 不包含这次重构**。需要测试后续代码请区分 GitHub Actions 构建产物与正式 Release，且先备份故事数据；当前仍待真机回归。
+> **Preview 9.7.6（2026-11-21）：** 集成 [PR #30](https://github.com/sl251/HDSI-Android/pull/30) 前端组件化重构并调整版本化发布流程。主要为内部结构优化，真机回归仍需继续；旧版升级前请备份故事数据。
 
 - **系统要求：** Android 8.0 及以上，ARM64（arm64-v8a）。
-- **9.7.5 安装包：** [HDS-Android-0.1.0-preview.9.7.5-arm64.apk](https://github.com/sl251/HDSI-Android/releases/download/v0.1.0-preview.9.7.5/HDS-Android-0.1.0-preview.9.7.5-arm64.apk)。
+- **9.7.6 安装包：** [HDS-Android-0.1.0-preview.9.7.6-arm64.apk](https://github.com/sl251/HDSI-Android/releases/download/v0.1.0-preview.9.7.6/HDS-Android-0.1.0-preview.9.7.6-arm64.apk)。
 - **文件校验：** 使用 Release 附件中的 `SHA256SUMS.txt`。
 - **存储空间：** 建议预留至少 1.5 GB；开启实验性本地 QQ 接入还需额外约 1.6 GB。
 
@@ -82,6 +82,8 @@ https://github.com/user-attachments/assets/809470b8-84a5-4e32-ac78-d59d217fac7b
 需要给不同任务分配模型，可以到「空间 → 模型与任务分工 → 任务分工」调整。
 
 ## 🗞️ 最近更新
+
+**Preview 9.7.6** 对移动端界面进行等价架构重构：将原 1197 行主入口拆分为页面、组件与状态 Hooks，保留 9.7.5 的用户体验、存储及原生通信协议，同时修正重复发布同名 Release 的 CI 问题。详见 [9.7.6 更新说明](docs/PREVIEW9.7.6.md)。
 
 **Preview 9.7.5** 实现真正的 Edge-to-Edge 全屏铺满绘制：壁纸、渐变与顶部毛玻璃延伸至物理屏幕四边，消除状态栏与底部手势区的纯色色带，同时保持顶栏控件、四栏导航胶囊、聊天输入框与横竖屏挖孔区的安全避让；状态栏时间与电量图标明暗随应用内主题及自定义壁纸亮度动态切换，软键盘弹出独立避让且不叠加多余空白。空间首页精修休眠名片并去除重复状态胶囊，全局设置页改为静默自动保存以消除开关跳动，清理多处冗余常驻口号。详见 [9.7.5 更新说明](docs/PREVIEW9.7.5.md)。
 

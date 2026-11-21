@@ -9,9 +9,9 @@
 | [2026-11-16～11-22 UI 与仓库整理实施记录](plans/2026-11-16-22-ui-repo-cleanup-todo.md) | 已合并功能、历史设计依据、尚待真机复核项目（并非未合并的开发计划） |
 | [聊天与角色扮演 UI 开源参考调研](agy-ui-research.md) | 聊天布局、输入栏、玻璃材质与移动端交互参考调研报告 |
 
-截至 **2026-11-21**，公开 APK 版本是 **Preview 9.7.5（versionCode 41）**；[PR #30](https://github.com/sl251/HDSI-Android/pull/30) 的 `main.tsx` 分层重构已经合入 `main`，**未包含在 9.7.5 Release APK 中**。11/21 的 Android CI 构建与 ARM64 验证成功，但自动发布作业因同名 Release 已存在而失败；这是发布步骤失败，不代表 APK 构建失败。具体见 [工作流](https://github.com/sl251/HDSI-Android/actions/runs/44890883594) 与 [CHANGELOG](CHANGELOG.md)。
+**Preview 9.7.6（2026-11-21，versionCode 42）** 纳入了 [PR #30](https://github.com/sl251/HDSI-Android/pull/30) 的 `main.tsx` 组件化重构，并改造了版本化发布工作流。9.7.5 仍是可用于前后对比的上一个版本；新版本的更新内容与验证边界见 [9.7.6 说明](PREVIEW9.7.6.md) 和 [CHANGELOG](CHANGELOG.md)。
 
-**当前主要未完成工作是设备验收，不是重做已合并的 UI 需求。** 测试时区分正式 Release APK 和 `main` 的 CI Artifact，所有设备结论以可追溯的安装包、机型和版本为准。
+**当前主要未完成工作仍是设备验收。** 新旧版本对照时记录 APK、机型与 Android 版本，不能把自动化回归当作真机测试结论。
 
 ## 入口指南与维护者说明
 
@@ -28,6 +28,7 @@
 ## 版本发布说明与专题设计（历史脉络）
 
 - **Preview 9.7 系列**：
+  - [Preview 9.7.6](PREVIEW9.7.6.md)（前端组件化重构与版本化发布流程修复）
   - [Preview 9.7.5](PREVIEW9.7.5.md)（Edge-to-Edge 全屏铺满绘制、动态状态栏图标适配、空间休眠精修与全局设置冗余文案清理）
   - [Preview 9.7.4](PREVIEW9.7.4.md)（角色静候名片舱、空间四分组收敛、消息诊断与引导液态玻璃化、全局轻触按压反馈）
   - [Preview 9.7.3](PREVIEW9.7.3.md)（液态玻璃交互、输入栏停靠、角色切换与人格库入口）

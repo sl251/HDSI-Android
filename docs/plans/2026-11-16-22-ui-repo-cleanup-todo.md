@@ -1,6 +1,6 @@
 # HDSI-Android｜2026-11-16～11-22 UI 与仓库整理实施记录
 
-> **进度更新（2026-11-21）**：UI 与仓库整理相关 [PR #25](https://github.com/sl251/HDSI-Android/pull/25)、[PR #26](https://github.com/sl251/HDSI-Android/pull/26)、[PR #29](https://github.com/sl251/HDSI-Android/pull/29) 已合并，公开发布版为 **Preview 9.7.5（versionCode 41）**；后续拆分 `main.tsx` 的 [PR #30](https://github.com/sl251/HDSI-Android/pull/30) 已于 11/21 合入 `main`，**尚未发布新 APK Release**。<br>
+> **进度更新（2026-11-21）**：UI 与仓库整理相关 [PR #25](https://github.com/sl251/HDSI-Android/pull/25)、[PR #26](https://github.com/sl251/HDSI-Android/pull/26)、[PR #29](https://github.com/sl251/HDSI-Android/pull/29) 已合并，9.7.5 已公开发布；后续拆分 `main.tsx` 的 [PR #30](https://github.com/sl251/HDSI-Android/pull/30) 已于 11/21 合入 `main`，并安排在 **Preview 9.7.6（versionCode 42）** 发布。<br>
 > **仍待处理**：未勾选的截图、真实设备、系统安全区、IME、媒体、长列表、覆盖升级与后台体验验收。CI 构建成功不等于真机验收完成；详情以 [TEST-ON-PHONE.md](../TEST-ON-PHONE.md) 为准。<br>
 > **历史说明**：本文件保留 11/15～11/17 的任务决策和当时源码引用；正文里“待合并”“当前 `main.tsx`”等旧上下文以当时日期为准，不能作为 11/21 的实时仓库状态。  
 > 主要目标：**睡眠态极简化、聊天输入栏底部停靠、表情包消息对齐、液态玻璃组件、空间子页重构与全局轻量动效、仓库文档整理。**  

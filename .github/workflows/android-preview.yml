@@ -152,9 +152,9 @@ jobs:
           if-no-files-found: error
           retention-days: 30
 
-  publish-preview-975:
-    # Only the build artifact decides a release: qq-linux-arm64 needs NapCat's
-    # public releases, which are private now and return 404.
+  publish-preview:
+    # Only publish a version after all build checks succeed.
+    # The QQ smoke check can be unavailable when upstream NapCat assets are private.
     if: always() && github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.build.result == 'success'
     needs: [qq-linux-arm64, build]
     runs-on: ubuntu-24.04
@@ -163,15 +163,27 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
-      - name: Publish signed Preview 9.7.5 as latest
+      - name: Publish versioned signed preview only when not already released
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          test "$(node -p "require('./package.json').version")" = "0.1.0-preview.9.7.5"
+          HDS_VERSION=$(node -p "require('./package.json').version")
+          case "$HDS_VERSION" in
+            0.1.0-preview.*) ;;
+            *) echo "Unexpected package version: $HDS_VERSION" >&2; exit 1 ;;
+          esac
+          tag="v$HDS_VERSION"
+          notes_path="docs/PREVIEW${HDS_VERSION#0.1.0-preview.}.md"
+          test -s "$notes_path"
+          grep -Fq "versionName \"$HDS_VERSION\"" android/app/build.gradle
+          if gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "Release $tag already exists; leave it unchanged and skip publishing."
+            exit 0
+          fi
           gh run download "$GITHUB_RUN_ID" --repo "$GITHUB_REPOSITORY" --name "HDS-Android-preview-$GITHUB_SHA" --dir release-artifacts
-          apk=$(find release-artifacts -name 'HDS-Android-0.1.0-preview.9.7.5-arm64.apk' -print -quit)
-          source=$(find release-artifacts -name 'HDS-Android-0.1.0-preview.9.7.5-source.tar.gz' -print -quit)
+          apk=$(find release-artifacts -name "HDS-Android-$HDS_VERSION-arm64.apk" -print -quit)
+          source=$(find release-artifacts -name "HDS-Android-$HDS_VERSION-source.tar.gz" -print -quit)
           sums=$(find release-artifacts -name 'SHA256SUMS.txt' -print -quit)
           test -s "$apk" && test -s "$source" && test -s "$sums"
           (cd "$(dirname "$sums")" && sha256sum -c SHA256SUMS.txt)
-          gh release create v0.1.0-preview.9.7.5 "$apk" "$source" "$sums" --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --title 'HDSI Android 0.1.0-preview.9.7.5' --notes-file docs/PREVIEW9.7.5.md --latest
+          gh release create "$tag" "$apk" "$source" "$sums" --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --title "HDSI Android $HDS_VERSION" --notes-file "$notes_path" --latest

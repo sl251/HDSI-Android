@@ -1,9 +1,8 @@
-# 未发布（main，2026-11-21；尚无新版本号）
+# 0.1.0-preview.9.7.6（2026-11-21）
 
-- [PR #30](https://github.com/sl251/HDSI-Android/pull/30) / [Issue #27](https://github.com/sl251/HDSI-Android/issues/27)：完成移动端界面等价重构。原 `apps/mobile-ui/main.tsx` 从 1197 行缩至 14 行；新增 `App.tsx`，将导航、故事、聊天、空间页面、组件及状态/副作用拆入独立模块，并按优先级管理返回栈。
-- 保持界面文案、CSS/DOM 锚点、Native Bridge/RPC、故事与 ZIP 存档协议、模型配置、轮询策略及 Android 版本号不变；此次提交为工程重构，**不是 Preview 9.7.6 或 9.7.5 的重新发布**。
-- PR 验证记录：`npm run typecheck`、`npm run build`、`npm test`（254 PASS）、`npm run test:ui`（39 PASS）均通过；**真机验收尚未执行**，请参见 [真机验收清单](TEST-ON-PHONE.md)。
-- 2026-11-21 `main` 推送的 Android CI 构建、签名与 ARM64/QQ 环境作业均成功，但自动发布作业因 `v0.1.0-preview.9.7.5` Release 已存在而失败。合并后的构建仅存于 [该次工作流 Artifact](https://github.com/sl251/HDSI-Android/actions/runs/44890883594)；**公开 9.7.5 Release APK 不包含这次重构**。后续应将普通提交验证与新版本发布分离。
+- 完成 [PR #30](https://github.com/sl251/HDSI-Android/pull/30) 的移动端界面等价组件化重构：`main.tsx` 1197→14 行，拆分 `App.tsx`、页面、组件及 Hooks，保留原有 Native Bridge/RPC、设置、故事、存档及 UI 行为。
+- 同步 NPM/Android 版本信息至 `0.1.0-preview.9.7.6` / `versionCode 42`；发布工作流改为依据版本自动选择 APK、源码及 Release 说明，并在同名 Release 已存在时安全跳过，不再对 9.7.5 重复创建。
+- 前端重构 PR 的验证记录：254 项宿主测试、39 项 UI 测试通过；新包仍须真机回归。完整说明见 [PREVIEW9.7.6.md](PREVIEW9.7.6.md)。
 
 # 0.1.0-preview.9.7.5（2026-11-18）
 
