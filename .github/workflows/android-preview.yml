@@ -54,13 +54,21 @@ jobs:
           cc -shared -fPIC scripts/deny-x11-hardlinks.c -o runtime/generated/rootfs/opt/hds/deny-x11-hardlinks.so
           npx esbuild scripts/xvfb-lock-smoke.ts --bundle --platform=node --format=cjs --outfile=runtime/generated/rootfs/opt/hds/xvfb-lock-smoke.cjs
           sudo chroot runtime/generated/rootfs /usr/bin/env PATH=/opt/node/bin:/usr/bin:/bin /opt/node/bin/node /opt/hds/xvfb-lock-smoke.cjs
-      # The NapCat GitHub releases became private, so the guest can no longer
-      # download NapCat.Shell.zip (HTTP 404). Keep the check running for signal,
-      # but do not let it fail the build or block a Release while it is unavailable.
-      - name: Verify QQ guest against NapCat (tolerates unavailable NapCat release)
-        continue-on-error: true
+      # Skip only the known upstream NapCat asset 404; all other failures
+      # (including runtime, watchdog and QR regressions) must fail this job.
+      - name: Verify QQ guest against NapCat (only unavailable asset 404 is tolerated)
+        shell: bash
         run: |
-          sudo chroot runtime/generated/rootfs /usr/bin/env HOME=/root PATH=/opt/node/bin:/usr/bin:/bin OPENSSL_CONF=/etc/ssl/openssl.cnf /opt/node/bin/node /opt/hds/qq-smoke.cjs
+          set -o pipefail
+          qq_log="$RUNNER_TEMP/qq-napcat-smoke.log"
+          if sudo chroot runtime/generated/rootfs /usr/bin/env HOME=/root PATH=/opt/node/bin:/usr/bin:/bin OPENSSL_CONF=/etc/ssl/openssl.cnf /opt/node/bin/node /opt/hds/qq-smoke.cjs 2>&1 | tee "$qq_log"; then
+            echo "PASS: NapCat QQ smoke completed."
+          elif grep -Fq '连接 NapCat 下载源' "$qq_log" && grep -Fq '组件下载失败：HTTP 404' "$qq_log"; then
+            echo "::warning::Pinned NapCat download returned HTTP 404; only this upstream asset check is skipped."
+          else
+            echo "::error::QQ smoke failed for an unexpected reason; blocking release."
+            exit 1
+          fi
   build:
     runs-on: ubuntu-24.04
     timeout-minutes: 35
@@ -78,6 +86,7 @@ jobs:
         run: npm ci --ignore-scripts --no-audit --no-fund
       - name: Build and test actual HDS host
         run: |
+          set -o pipefail
           mkdir -p artifacts
           npm test 2>&1 | tee artifacts/host-tests.log
           npm run build
@@ -86,13 +95,10 @@ jobs:
         run: |
           python3 tests/runtime-pack.test.py
           python3 tests/guest-openssl-config.test.py
-      - name: Verify image protocol settings and diagnostics UI
+      - name: Verify all 15 mobile UI regression suites
         run: |
           npx playwright-core install --with-deps chromium
-          node tests/experience-ui.mjs
-          node tests/message-diagnostics-ui.mjs
-          node tests/preview97-ui.mjs
-          node tests/preview971-ui.mjs
+          npm run test:ui
       - name: Verify and retain actual preview.1 rootfs regression input
         env:
           GH_TOKEN: ${{ github.token }}
@@ -153,9 +159,9 @@ jobs:
           retention-days: 30
 
   publish-preview:
-    # Only publish a version after all build checks succeed.
-    # The QQ smoke check can be unavailable when upstream NapCat assets are private.
-    if: always() && github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.build.result == 'success'
+    # Require both the signed APK build and the ARM64 guest checks to pass.
+    # The QQ smoke step only tolerates the known upstream NapCat asset HTTP 404.
+    if: always() && github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.build.result == 'success' && needs.qq-linux-arm64.result == 'success'
     needs: [qq-linux-arm64, build]
     runs-on: ubuntu-24.04
     permissions:
@@ -186,4 +192,4 @@ jobs:
           sums=$(find release-artifacts -name 'SHA256SUMS.txt' -print -quit)
           test -s "$apk" && test -s "$source" && test -s "$sums"
           (cd "$(dirname "$sums")" && sha256sum -c SHA256SUMS.txt)
-          gh release create "$tag" "$apk" "$source" "$sums" --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --title "HDSI Android $HDS_VERSION" --notes-file "$notes_path" --latest
+          gh release create "$tag" "$apk" "$source" "$sums" --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --title "HDSI Android $HDS_VERSION" --notes-file "$notes_path" --prerelease
