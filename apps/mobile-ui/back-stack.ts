@@ -1,21 +1,25 @@
 // 局部浮层返回拦截栈：用于在系统返回键触发前优先收起已展开的下拉框或确认弹窗
 type BackHandler = () => boolean
 
-const stack: BackHandler[] = []
+type BackEntry = { handler: BackHandler; priority: number }
+const stack: BackEntry[] = []
 
-/** 注册一个后进先出的返回拦截处理器，返回注销函数。 */
-export function registerBackHandler(handler: BackHandler): () => void {
-  stack.push(handler)
+/** 优先级越高越先处理；相同优先级按注册顺序后进先出。 */
+export function registerBackHandler(handler: BackHandler, priority = 0): () => void {
+  const entry = { handler, priority }
+  const index = stack.findIndex(existing => existing.priority > priority)
+  if (index < 0) stack.push(entry)
+  else stack.splice(index, 0, entry)
   return () => {
-    const index = stack.lastIndexOf(handler)
+    const index = stack.indexOf(entry)
     if (index >= 0) stack.splice(index, 1)
   }
 }
 
-/** 按后进先出顺序执行已注册的拦截器；有任一浮层消耗了返回动作则返回 true。 */
+/** 按优先级及后进先出顺序执行拦截器，直到某个处理器消费返回动作。 */
 export function dispatchBackOverlay(): boolean {
   for (let i = stack.length - 1; i >= 0; i -= 1) {
-    if (stack[i]()) return true
+    if (stack[i].handler()) return true
   }
   return false
 }

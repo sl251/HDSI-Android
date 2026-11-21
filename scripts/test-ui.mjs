@@ -2,7 +2,7 @@ import { spawn, spawnSync } from 'node:child_process'
 import { existsSync } from 'node:fs'
 import { chromium } from 'playwright-core'
 
-// 聚合全部 14 个移动端 UI 回归脚本，避免单跑聚合入口时漏测新增套件
+// 聚合全部 15 个移动端 UI 回归脚本，避免单跑聚合入口时漏测新增套件
 const suites = [
   'story',
   'preview91-m4',
@@ -18,6 +18,7 @@ const suites = [
   'experience',
   'preview97',
   'preview971',
+  'preview974',
 ]
 
 function resolveBrowserPath() {
