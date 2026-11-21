@@ -2,12 +2,16 @@
 
 本索引帮助开发者、测试人员与贡献者快速定位当前开发计划、构建调试指南、历史版本说明、验收证据以及开源合规文件。
 
-## 当前开发计划与 UI 调研
+## 当前状态、待验收与历史计划
 
 | 文档 | 说明 |
 | --- | --- |
-| [2026-11-16～11-22 UI 与仓库整理 TODO](plans/2026-11-16-22-ui-repo-cleanup-todo.md) | 故事页极简化、输入栏底部停靠、贴纸对齐、液态玻璃、空间子页重构、轻量动效与仓库整理清单 |
+| [2026-11-16～11-22 UI 与仓库整理实施记录](plans/2026-11-16-22-ui-repo-cleanup-todo.md) | 已合并功能、历史设计依据、尚待真机复核项目（并非未合并的开发计划） |
 | [聊天与角色扮演 UI 开源参考调研](agy-ui-research.md) | 聊天布局、输入栏、玻璃材质与移动端交互参考调研报告 |
+
+截至 **2026-11-21**，公开 APK 版本是 **Preview 9.7.5（versionCode 41）**；[PR #30](https://github.com/sl251/HDSI-Android/pull/30) 的 `main.tsx` 分层重构已经合入 `main`，**未包含在 9.7.5 Release APK 中**。11/21 的 Android CI 构建与 ARM64 验证成功，但自动发布作业因同名 Release 已存在而失败；这是发布步骤失败，不代表 APK 构建失败。具体见 [工作流](https://github.com/sl251/HDSI-Android/actions/runs/44890883594) 与 [CHANGELOG](CHANGELOG.md)。
+
+**当前主要未完成工作是设备验收，不是重做已合并的 UI 需求。** 测试时区分正式 Release APK 和 `main` 的 CI Artifact，所有设备结论以可追溯的安装包、机型和版本为准。
 
 ## 入口指南与维护者说明
 
@@ -15,7 +19,7 @@
 | --- | --- |
 | [项目主页 README](../README.md) | 功能概览、下载安装、快速开始与源码构建命令 |
 | [版本变更日志 CHANGELOG](CHANGELOG.md) | 各 Preview 版本的累积更新记录 |
-| [真机验收清单 TEST-ON-PHONE](TEST-ON-PHONE.md) | Preview 9.7 真机安装、权限、模型与后台保活验收步骤 |
+| [真机验收清单 TEST-ON-PHONE](TEST-ON-PHONE.md) | Preview 9.7.5 与 main 未发布重构的设备测试；包含安全区、软键盘、后台、存档和媒体 |
 | [消息诊断指南 diagnostics-guide](diagnostics-guide.md) | 如何阅读与排查「空间 → 消息诊断」条目 |
 | [移动宿主与上游边界 MOBILE-PATCHES](MOBILE-PATCHES.md) | HDS-Interlude 上游引擎与 Android 移动宿主补丁边界说明 |
 | [功能对照表 feature-parity](feature-parity.md) · ([CSV](feature-parity.csv)) | 上游 HDS-Interlude 与移动端能力对齐情况 |
